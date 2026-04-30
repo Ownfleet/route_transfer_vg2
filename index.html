@@ -6,25 +6,23 @@
 <title>Rotas Disponíveis</title>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
   font-family: Arial, sans-serif;
   background: #030712;
-  color: #fff;
+  color: white;
 }
 
 header {
   text-align: center;
-  padding: 24px 15px;
+  padding: 26px 15px;
 }
 
 header h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 30px;
 }
 
 .grid {
@@ -50,8 +48,8 @@ header h1 {
   position: absolute;
   top: 18px;
   right: -35px;
-  background: #1f2937;
-  color: #22c55e;
+  background: #052e16;
+  color: #86efac;
   border: 1px solid #22c55e;
   transform: rotate(10deg);
   padding: 8px 55px;
@@ -106,36 +104,51 @@ button:hover {
   text-align: center;
   color: #ccc;
   margin-top: 40px;
+  grid-column: 1 / -1;
 }
 
 .modal {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.75);
+  background: rgba(0,0,0,.78);
   align-items: center;
   justify-content: center;
   z-index: 10;
+  padding: 18px;
+}
+
+.modal.show {
+  display: flex;
 }
 
 .modal-box {
-  background: #111827;
+  background: linear-gradient(145deg, #111827, #080d1c);
   border: 1px solid #374151;
-  border-radius: 18px;
+  border-radius: 24px;
   padding: 24px;
-  width: 90%;
-  max-width: 380px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 25px 60px rgba(0,0,0,.55);
 }
 
-.modal-box h3 {
+.modal-box h2 {
   margin-top: 0;
+  color: #ffb199;
+}
+
+.modal-box p {
+  color: #cbd5e1;
+  line-height: 1.5;
 }
 
 input {
   width: 100%;
-  padding: 14px;
-  border-radius: 10px;
+  padding: 15px;
+  border-radius: 14px;
   border: 1px solid #374151;
+  background: #020617;
+  color: white;
   margin: 12px 0;
   font-size: 16px;
 }
@@ -143,6 +156,11 @@ input {
 .cancelar {
   background: #374151;
   margin-top: 10px;
+}
+
+.success {
+  color: #86efac;
+  font-weight: bold;
 }
 </style>
 </head>
@@ -155,105 +173,116 @@ input {
 
 <main class="grid" id="rotas"></main>
 
-<div class="modal" id="modal">
+<div class="modal" id="modalPegar">
   <div class="modal-box">
-    <h3>Confirmar rota</h3>
+    <h2>Confirmar rota</h2>
     <p id="rotaSelecionada"></p>
-
     <input id="driverId" placeholder="Digite seu ID">
-
     <button onclick="confirmarRota()">Confirmar e pegar rota</button>
-    <button class="cancelar" onclick="fecharModal()">Cancelar</button>
+    <button class="cancelar" onclick="fecharModal('modalPegar')">Cancelar</button>
+  </div>
+</div>
+
+<div class="modal" id="modalResultado">
+  <div class="modal-box">
+    <h2 id="resultadoTitulo"></h2>
+    <p id="resultadoTexto"></p>
+    <button onclick="fecharModal('modalResultado')">Entendi</button>
   </div>
 </div>
 
 <script>
 const API = "https://truthful-acceptance-production-fb55.up.railway.app";
-
 let rotaAtual = null;
+
+function abrirModal(id) {
+  document.getElementById(id).classList.add("show");
+}
+
+function fecharModal(id) {
+  document.getElementById(id).classList.remove("show");
+}
+
+function mostrarResultado(titulo, texto) {
+  resultadoTitulo.innerText = titulo;
+  resultadoTexto.innerText = texto;
+  abrirModal("modalResultado");
+}
 
 async function carregarRotas() {
   const res = await fetch(API + "/routes.php");
   const rotas = await res.json();
 
+  rotas.innerHTML;
+
   const container = document.getElementById("rotas");
   container.innerHTML = "";
 
   if (!rotas.length) {
-    container.innerHTML = `<div class="empty">Nenhuma rota disponível</div>`;
+    container.innerHTML = `<div class="empty">Nenhuma rota disponível no momento.</div>`;
     return;
   }
 
   rotas.forEach(rota => {
-    const card = document.createElement("div");
-    card.className = "card";
-
     const veiculos = String(rota.allowed_vehicles)
       .replace("{", "")
       .replace("}", "")
       .split(",");
 
+    const card = document.createElement("div");
+    card.className = "card";
+
     card.innerHTML = `
       <div class="status">DISPONÍVEL</div>
       <h2>ROTA: ${rota.route_name}</h2>
       <p>Região: ${rota.region}</p>
-
       <div class="tags">
         ${veiculos.map(v => `<span class="tag">${v}</span>`).join("")}
       </div>
-
-      <button onclick='abrirModal(${JSON.stringify(rota)})'>
-        Pegar rota
-      </button>
+      <button onclick='abrirPegar(${JSON.stringify(rota)})'>Pegar rota</button>
     `;
 
     container.appendChild(card);
   });
 }
 
-function abrirModal(rota) {
+function abrirPegar(rota) {
   rotaAtual = rota;
-  document.getElementById("rotaSelecionada").innerText =
-    `Rota: ${rota.route_name} | Região: ${rota.region}`;
-
-  document.getElementById("driverId").value = "";
-  document.getElementById("modal").style.display = "flex";
-}
-
-function fecharModal() {
-  document.getElementById("modal").style.display = "none";
-  rotaAtual = null;
+  rotaSelecionada.innerText = `Rota: ${rota.route_name}\nRegião: ${rota.region}`;
+  driverId.value = "";
+  abrirModal("modalPegar");
 }
 
 async function confirmarRota() {
-  const driverId = document.getElementById("driverId").value.trim();
-
-  if (!driverId) {
-    alert("Digite seu ID.");
-    return;
-  }
+  const id = driverId.value.trim();
+  if (!id) return;
 
   const res = await fetch(API + "/claim-route.php", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: {"Content-Type": "application/json"},
     body: JSON.stringify({
-      driver_id: driverId,
+      driver_id: id,
       route_id: rotaAtual.id
     })
   });
 
   const data = await res.json();
 
+  fecharModal("modalPegar");
+
   if (data.success) {
-    alert(`✅ Você pegou esta rota: ${data.route.route_name}`);
-    fecharModal();
-    carregarRotas();
+    mostrarResultado(
+      "Rota confirmada",
+      `Você pegou esta rota: ${data.route.route_name}`
+    );
   } else {
-    alert("❌ " + data.error);
-    carregarRotas();
+    mostrarResultado(
+      "Não foi possível pegar esta rota",
+      data.error || "A rota pode já ter sido repassada."
+    );
   }
+
+  carregarRotas();
 }
 
 carregarRotas();

@@ -4,25 +4,21 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type, X-Admin-Token");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
-    exit;
-}
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") exit;
 
 $adminToken = $_SERVER["HTTP_X_ADMIN_TOKEN"] ?? "";
 $realToken = getenv("ADMIN_TOKEN");
 
 if (!$realToken || $adminToken !== $realToken) {
     http_response_code(401);
-    echo json_encode(["error" => "Acesso não autorizado"]);
     exit;
 }
 
 require_once "db.php";
 
 $conn = getConnection();
-$method = $_SERVER["REQUEST_METHOD"];
 
-if ($method === "GET") {
+if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $stmt = $conn->query("SELECT * FROM drivers ORDER BY created_at DESC");
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
     exit;
@@ -41,7 +37,6 @@ if ($action === "create") {
         trim($data["driver_name"]),
         $data["vehicle_type"]
     ]);
-
     echo json_encode(["success" => true]);
     exit;
 }
