@@ -48,14 +48,24 @@ header h1 {
   position: absolute;
   top: 18px;
   right: -35px;
-  background: #052e16;
-  color: #86efac;
-  border: 1px solid #22c55e;
   transform: rotate(10deg);
   padding: 8px 55px;
   font-size: 12px;
   font-weight: bold;
   letter-spacing: 2px;
+  border: 1px solid;
+}
+
+.disponivel {
+  background: #052e16;
+  color: #86efac;
+  border-color: #22c55e;
+}
+
+.repassada {
+  background: #3b2f06;
+  color: #fde68a;
+  border-color: #facc15;
 }
 
 .card h2 {
@@ -100,6 +110,13 @@ button:hover {
   background: #ff6a3d;
 }
 
+button:disabled {
+  background: #111827;
+  color: #6b7280;
+  cursor: not-allowed;
+  border: 1px solid #1f2937;
+}
+
 .empty {
   text-align: center;
   color: #ccc;
@@ -140,6 +157,7 @@ button:hover {
 .modal-box p {
   color: #cbd5e1;
   line-height: 1.5;
+  white-space: pre-line;
 }
 
 input {
@@ -156,11 +174,6 @@ input {
 .cancelar {
   background: #374151;
   margin-top: 10px;
-}
-
-.success {
-  color: #86efac;
-  font-weight: bold;
 }
 </style>
 </head>
@@ -195,6 +208,10 @@ input {
 const API = "https://truthful-acceptance-production-fb55.up.railway.app";
 let rotaAtual = null;
 
+function existeModalAberto() {
+  return document.querySelector(".modal.show") !== null;
+}
+
 function abrirModal(id) {
   document.getElementById(id).classList.add("show");
 }
@@ -209,37 +226,48 @@ function mostrarResultado(titulo, texto) {
   abrirModal("modalResultado");
 }
 
-async function carregarRotas() {
-  const res = await fetch(API + "/routes.php");
-  const rotas = await res.json();
+async function carregarRotas(forcar = false) {
+  if (!forcar && existeModalAberto()) return;
 
-  rotas.innerHTML;
+  const res = await fetch(API + "/routes.php");
+  const rotasData = await res.json();
 
   const container = document.getElementById("rotas");
   container.innerHTML = "";
 
-  if (!rotas.length) {
-    container.innerHTML = `<div class="empty">Nenhuma rota disponível no momento.</div>`;
+  if (!rotasData.length) {
+    container.innerHTML = `<div class="empty">Nenhuma rota divulgada no momento.</div>`;
     return;
   }
 
-  rotas.forEach(rota => {
+  rotasData.forEach(rota => {
     const veiculos = String(rota.allowed_vehicles)
       .replace("{", "")
       .replace("}", "")
       .split(",");
 
+    const disponivel = rota.status === "disponivel";
+
     const card = document.createElement("div");
     card.className = "card";
 
     card.innerHTML = `
-      <div class="status">DISPONÍVEL</div>
+      <div class="status ${disponivel ? "disponivel" : "repassada"}">
+        ${disponivel ? "DISPONÍVEL" : "ROTA REPASSADA"}
+      </div>
+
       <h2>ROTA: ${rota.route_name}</h2>
       <p>Região: ${rota.region}</p>
+
       <div class="tags">
         ${veiculos.map(v => `<span class="tag">${v}</span>`).join("")}
       </div>
-      <button onclick='abrirPegar(${JSON.stringify(rota)})'>Pegar rota</button>
+
+      ${
+        disponivel
+        ? `<button onclick='abrirPegar(${JSON.stringify(rota)})'>Pegar rota</button>`
+        : `<button disabled>Indisponível</button>`
+      }
     `;
 
     container.appendChild(card);
@@ -273,7 +301,7 @@ async function confirmarRota() {
   if (data.success) {
     mostrarResultado(
       "Rota confirmada",
-      `Você pegou esta rota: ${data.route.route_name}`
+      `Você pegou esta rota:\n${data.route.route_name}`
     );
   } else {
     mostrarResultado(
@@ -282,11 +310,11 @@ async function confirmarRota() {
     );
   }
 
-  carregarRotas();
+  carregarRotas(true);
 }
 
-carregarRotas();
-setInterval(carregarRotas, 5000);
+carregarRotas(true);
+setInterval(() => carregarRotas(false), 15000);
 </script>
 
 </body>
