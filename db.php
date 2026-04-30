@@ -25,7 +25,10 @@ function getConnection() {
         ]);
     } catch (PDOException $e) {
         http_response_code(500);
-        echo json_encode(["error" => "Erro ao conectar no banco"]);
+        echo json_encode([
+    "error" => "Erro ao conectar no banco",
+    "details" => $e->getMessage()
+]);
         exit;
     }
 }
