@@ -1,113 +1,259 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rotas Disponíveis</title>
 
 <style>
-body {
-    font-family: Arial;
-    background: #111;
-    color: white;
-    text-align: center;
+* {
+  box-sizing: border-box;
 }
 
-.container {
-    max-width: 400px;
-    margin: auto;
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #030712;
+  color: #fff;
+}
+
+header {
+  text-align: center;
+  padding: 24px 15px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
 }
 
 .card {
-    background: #1f1f1f;
-    padding: 15px;
-    margin: 10px 0;
-    border-radius: 10px;
+  position: relative;
+  background: linear-gradient(145deg, #171b2a, #0b1020);
+  border: 1px solid #2b3448;
+  border-radius: 22px;
+  padding: 22px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.35);
+  overflow: hidden;
+}
+
+.status {
+  position: absolute;
+  top: 18px;
+  right: -35px;
+  background: #1f2937;
+  color: #22c55e;
+  border: 1px solid #22c55e;
+  transform: rotate(10deg);
+  padding: 8px 55px;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+
+.card p {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.tags {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
+
+.tag {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: bold;
+  border: 1px solid #facc15;
+  color: #facc15;
 }
 
 button {
-    background: #ee4d2d;
-    color: white;
-    border: none;
-    padding: 10px;
-    width: 100%;
-    border-radius: 5px;
-    cursor: pointer;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 14px;
+  background: #ee4d2d;
+  color: white;
+  font-weight: bold;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #ff6a3d;
+}
+
+.empty {
+  text-align: center;
+  color: #ccc;
+  margin-top: 40px;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.75);
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.modal-box {
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 18px;
+  padding: 24px;
+  width: 90%;
+  max-width: 380px;
+}
+
+.modal-box h3 {
+  margin-top: 0;
 }
 
 input {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid #374151;
+  margin: 12px 0;
+  font-size: 16px;
+}
+
+.cancelar {
+  background: #374151;
+  margin-top: 10px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-    <h2>Rotas Disponíveis</h2>
+<header>
+  <h1>Rotas Disponíveis</h1>
+</header>
+
+<main class="grid" id="rotas"></main>
+
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <h3>Confirmar rota</h3>
+    <p id="rotaSelecionada"></p>
 
     <input id="driverId" placeholder="Digite seu ID">
 
-    <div id="rotas"></div>
+    <button onclick="confirmarRota()">Confirmar e pegar rota</button>
+    <button class="cancelar" onclick="fecharModal()">Cancelar</button>
+  </div>
 </div>
 
 <script>
 const API = "https://truthful-acceptance-production-fb55.up.railway.app";
 
+let rotaAtual = null;
+
 async function carregarRotas() {
-    const res = await fetch(API + "/routes.php");
-    const data = await res.json();
+  const res = await fetch(API + "/routes.php");
+  const rotas = await res.json();
 
-    const container = document.getElementById("rotas");
-    container.innerHTML = "";
+  const container = document.getElementById("rotas");
+  container.innerHTML = "";
 
-    if (data.length === 0) {
-        container.innerHTML = "<p>Nenhuma rota disponível</p>";
-        return;
-    }
+  if (!rotas.length) {
+    container.innerHTML = `<div class="empty">Nenhuma rota disponível</div>`;
+    return;
+  }
 
-    data.forEach(r => {
-        const div = document.createElement("div");
-        div.className = "card";
+  rotas.forEach(rota => {
+    const card = document.createElement("div");
+    card.className = "card";
 
-        div.innerHTML = `
-            <h3>${r.route_name}</h3>
-            <p>${r.region}</p>
-            <button onclick="pegarRota(${r.id})">Pegar rota</button>
-        `;
+    const veiculos = String(rota.allowed_vehicles)
+      .replace("{", "")
+      .replace("}", "")
+      .split(",");
 
-        container.appendChild(div);
-    });
+    card.innerHTML = `
+      <div class="status">DISPONÍVEL</div>
+      <h2>ROTA: ${rota.route_name}</h2>
+      <p>Região: ${rota.region}</p>
+
+      <div class="tags">
+        ${veiculos.map(v => `<span class="tag">${v}</span>`).join("")}
+      </div>
+
+      <button onclick='abrirModal(${JSON.stringify(rota)})'>
+        Pegar rota
+      </button>
+    `;
+
+    container.appendChild(card);
+  });
 }
 
-async function pegarRota(routeId) {
-    const driverId = document.getElementById("driverId").value;
+function abrirModal(rota) {
+  rotaAtual = rota;
+  document.getElementById("rotaSelecionada").innerText =
+    `Rota: ${rota.route_name} | Região: ${rota.region}`;
 
-    if (!driverId) {
-        alert("Digite seu ID");
-        return;
-    }
+  document.getElementById("driverId").value = "";
+  document.getElementById("modal").style.display = "flex";
+}
 
-    const res = await fetch(API + "/claim-route.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            driver_id: driverId,
-            route_id: routeId
-        })
-    });
+function fecharModal() {
+  document.getElementById("modal").style.display = "none";
+  rotaAtual = null;
+}
 
-    const data = await res.json();
+async function confirmarRota() {
+  const driverId = document.getElementById("driverId").value.trim();
 
-    if (data.success) {
-        alert("✅ Você pegou esta rota!");
-        carregarRotas();
-    } else {
-        alert("❌ " + data.error);
-    }
+  if (!driverId) {
+    alert("Digite seu ID.");
+    return;
+  }
+
+  const res = await fetch(API + "/claim-route.php", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      driver_id: driverId,
+      route_id: rotaAtual.id
+    })
+  });
+
+  const data = await res.json();
+
+  if (data.success) {
+    alert(`✅ Você pegou esta rota: ${data.route.route_name}`);
+    fecharModal();
+    carregarRotas();
+  } else {
+    alert("❌ " + data.error);
+    carregarRotas();
+  }
 }
 
 carregarRotas();
