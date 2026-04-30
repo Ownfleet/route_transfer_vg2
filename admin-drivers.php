@@ -33,6 +33,7 @@ if ($action === "create") {
     $driverId = trim($data["driver_id"] ?? "");
     $driverName = trim($data["driver_name"] ?? "");
     $vehicleType = strtoupper(trim($data["vehicle_type"] ?? ""));
+    $telephone = trim($data["telephone"] ?? "");
 
     if (!$driverId || !$driverName || !$vehicleType) {
         echo json_encode(["error" => "Preencha todos os campos"]);
@@ -45,11 +46,15 @@ if ($action === "create") {
     }
 
     $stmt = $conn->prepare("
-        INSERT INTO drivers (driver_id, driver_name, vehicle_type)
-        VALUES (?, ?, ?)
+        INSERT INTO drivers (driver_id, driver_name, vehicle_type, telephone)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT (driver_id) DO UPDATE SET
+            driver_name = EXCLUDED.driver_name,
+            vehicle_type = EXCLUDED.vehicle_type,
+            telephone = EXCLUDED.telephone
     ");
 
-    $stmt->execute([$driverId, $driverName, $vehicleType]);
+    $stmt->execute([$driverId, $driverName, $vehicleType, $telephone]);
 
     echo json_encode(["success" => true]);
     exit;
@@ -64,11 +69,12 @@ if ($action === "bulk_create") {
     }
 
     $stmt = $conn->prepare("
-        INSERT INTO drivers (driver_id, driver_name, vehicle_type)
-        VALUES (?, ?, ?)
+        INSERT INTO drivers (driver_id, driver_name, vehicle_type, telephone)
+        VALUES (?, ?, ?, ?)
         ON CONFLICT (driver_id) DO UPDATE SET
             driver_name = EXCLUDED.driver_name,
-            vehicle_type = EXCLUDED.vehicle_type
+            vehicle_type = EXCLUDED.vehicle_type,
+            telephone = EXCLUDED.telephone
     ");
 
     $importados = 0;
@@ -81,6 +87,7 @@ if ($action === "bulk_create") {
         $driverId = trim($d["driver_id"] ?? "");
         $driverName = trim($d["driver_name"] ?? "");
         $vehicleType = strtoupper(trim($d["vehicle_type"] ?? ""));
+        $telephone = trim($d["telephone"] ?? "");
 
         if (!$driverId || !$driverName || !$vehicleType) {
             $ignorados++;
@@ -95,7 +102,7 @@ if ($action === "bulk_create") {
         }
 
         try {
-            $stmt->execute([$driverId, $driverName, $vehicleType]);
+            $stmt->execute([$driverId, $driverName, $vehicleType, $telephone]);
             $importados++;
         } catch (Exception $e) {
             $ignorados++;

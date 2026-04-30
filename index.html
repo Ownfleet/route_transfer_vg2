@@ -17,12 +17,22 @@ body {
 
 header {
   text-align: center;
-  padding: 26px 15px;
+  padding: 26px 15px 10px;
 }
 
 header h1 {
   margin: 0;
   font-size: 30px;
+}
+
+.top-actions {
+  max-width: 520px;
+  margin: 14px auto 0;
+  padding: 0 20px;
+}
+
+.wait-btn {
+  background: #16a34a;
 }
 
 .grid {
@@ -107,7 +117,7 @@ button {
 }
 
 button:hover {
-  background: #ff6a3d;
+  filter: brightness(1.08);
 }
 
 button:disabled {
@@ -182,6 +192,9 @@ input {
 
 <header>
   <h1>Rotas Disponíveis</h1>
+  <div class="top-actions">
+    <button class="wait-btn" onclick="abrirAguardarGalpao()">Aguardar rota no galpão</button>
+  </div>
 </header>
 
 <main class="grid" id="rotas"></main>
@@ -193,6 +206,16 @@ input {
     <input id="driverId" placeholder="Digite seu ID">
     <button onclick="confirmarRota()">Confirmar e pegar rota</button>
     <button class="cancelar" onclick="fecharModal('modalPegar')">Cancelar</button>
+  </div>
+</div>
+
+<div class="modal" id="modalAguardar">
+  <div class="modal-box">
+    <h2>Aguardar rota no galpão</h2>
+    <p>Digite seu ID e permita a localização do celular para registrar sua presença no galpão.</p>
+    <input id="waitingDriverId" placeholder="Digite seu ID">
+    <button onclick="confirmarAguardarGalpao()">Registrar presença</button>
+    <button class="cancelar" onclick="fecharModal('modalAguardar')">Cancelar</button>
   </div>
 </div>
 
@@ -311,6 +334,50 @@ async function confirmarRota() {
   }
 
   carregarRotas(true);
+}
+
+function abrirAguardarGalpao() {
+  waitingDriverId.value = "";
+  abrirModal("modalAguardar");
+}
+
+function confirmarAguardarGalpao() {
+  const id = waitingDriverId.value.trim();
+  if (!id) return;
+
+  if (!navigator.geolocation) {
+    mostrarResultado("Localização indisponível", "Seu navegador não permite validar localização.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const res = await fetch(API + "/waiting-register.php", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        driver_id: id,
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude
+      })
+    });
+
+    const data = await res.json();
+
+    fecharModal("modalAguardar");
+
+    if (data.success) {
+      mostrarResultado("Presença registrada", data.message);
+    } else {
+      mostrarResultado("Não foi possível registrar", data.error || "Tente novamente.");
+    }
+  }, () => {
+    fecharModal("modalAguardar");
+    mostrarResultado("Localização não permitida", "Para registrar presença, é necessário permitir o acesso à localização.");
+  }, {
+    enableHighAccuracy: true,
+    timeout: 15000,
+    maximumAge: 0
+  });
 }
 
 carregarRotas(true);

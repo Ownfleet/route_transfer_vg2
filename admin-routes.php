@@ -16,7 +16,8 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $stmt = $conn->query("
         SELECT 
             r.*,
-            rc.vehicle_type AS claimed_vehicle_type
+            COALESCE(rc.vehicle_type, d.vehicle_type) AS claimed_vehicle_type,
+            d.telephone AS claimed_telephone
         FROM routes r
         LEFT JOIN LATERAL (
             SELECT vehicle_type
@@ -25,6 +26,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
             ORDER BY claimed_at DESC
             LIMIT 1
         ) rc ON TRUE
+        LEFT JOIN drivers d ON d.driver_id = r.claimed_by_driver_id
         ORDER BY r.created_at DESC
     ");
 

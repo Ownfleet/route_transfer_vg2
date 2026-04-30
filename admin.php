@@ -281,6 +281,31 @@ input:focus, select:focus { border-color: #ee4d2d; }
   white-space: pre-line;
 }
 
+
+.whatsapp-link {
+  display: inline-block;
+  color: #86efac;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.whatsapp-link:hover {
+  text-decoration: underline;
+}
+
+.waiting-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.waiting-item {
+  background: #020617;
+  border: 1px solid #263044;
+  border-radius: 18px;
+  padding: 16px;
+}
+
 </style>
 </head>
 
@@ -298,6 +323,8 @@ input:focus, select:focus { border-color: #ee4d2d; }
       <button onclick="abrirModal('modalConsultaMotorista')">Consultar motorista</button>
       <button onclick="abrirModal('modalRota')">+ Divulgar rota</button>
       <button onclick="abrirGerenciarRotas()">Gerenciar rotas</button>
+      <button class="btn-info" onclick="abrirConfigGalpao()">Configurar galpão</button>
+      <button class="btn-ok" onclick="abrirAguardandoGalpao()">Aguardando no galpão</button>
       <button class="btn-dark notification-btn" onclick="abrirNotificacoes()">🔔 Notificações <span id="notifCount" class="notification-count">0</span></button>
       <button class="btn-dark" onclick="sairAdmin()">Sair do admin</button>
     </div>
@@ -325,6 +352,7 @@ input:focus, select:focus { border-color: #ee4d2d; }
     <p>Adicione um motorista à base.</p>
     <input id="driverId" placeholder="ID do motorista">
     <input id="driverName" placeholder="Nome do motorista">
+    <input id="driverTelephone" placeholder="Telefone/WhatsApp. Ex: 11999998888">
     <select id="vehicleType">
       <option value="FIORINO">FIORINO</option>
       <option value="PASSEIO">PASSEIO</option>
@@ -338,7 +366,7 @@ input:focus, select:focus { border-color: #ee4d2d; }
 
     <div class="import-box">
       <h3>Importar vários motoristas</h3>
-      <p class="small">Aceita arquivos CSV, XLSX ou XLS com as colunas: <strong>driver_id, driver_name, vehicle_type</strong>.</p>
+      <p class="small">Aceita arquivos CSV, XLSX ou XLS com as colunas: <strong>driver_id, driver_name, vehicle_type, telephone</strong>.</p>
 
       <div class="modal-actions">
         <button class="btn-info" onclick="baixarModeloMotoristas()">Baixar modelo Excel</button>
@@ -367,6 +395,7 @@ input:focus, select:focus { border-color: #ee4d2d; }
         <div class="info-box"><small>ID</small><strong id="mId"></strong></div>
         <div class="info-box"><small>Nome</small><strong id="mNome"></strong></div>
         <div class="info-box"><small>Veículo</small><strong id="mVeiculo"></strong></div>
+        <div class="info-box"><small>Telefone</small><strong id="mTelefone"></strong></div>
         <div class="info-box"><small>Status</small><strong id="mStatus"></strong></div>
         <div class="info-box"><small>Punição até</small><strong id="mPunicao"></strong></div>
       </div>
@@ -445,6 +474,36 @@ input:focus, select:focus { border-color: #ee4d2d; }
   </div>
 </div>
 
+
+<div class="modal" id="modalConfigGalpao">
+  <div class="modal-box">
+    <h2>Configurar galpão</h2>
+    <p>Defina a latitude, longitude e o raio permitido para registrar presença no galpão.</p>
+
+    <input id="hubName" placeholder="Nome do galpão. Ex: Jardim Adriana">
+    <input id="hubLatitude" placeholder="Latitude. Ex: -23.123456">
+    <input id="hubLongitude" placeholder="Longitude. Ex: -46.123456">
+    <input id="hubRadius" placeholder="Raio em metros. Ex: 300" type="number">
+
+    <div class="modal-actions">
+      <button onclick="salvarConfigGalpao()">Salvar configuração</button>
+      <button class="btn-dark" onclick="fecharModal('modalConfigGalpao')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalAguardandoGalpao">
+  <div class="modal-box large">
+    <h2>Motoristas aguardando no galpão</h2>
+    <p>Lista dos motoristas que registraram presença dentro do raio configurado hoje.</p>
+    <div id="listaAguardandoGalpao" class="waiting-grid"></div>
+
+    <div class="modal-actions">
+      <button class="btn-dark" onclick="fecharModal('modalAguardandoGalpao')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="modalConfirmacao">
   <div class="modal-box">
     <h2 id="confirmTitulo">Confirmar ação</h2>
@@ -488,6 +547,17 @@ function headersAdmin() {
 
 function headersGetAdmin() {
   return {};
+}
+
+function limparTelefone(valor) {
+  return String(valor || "").replace(/\D/g, "");
+}
+
+function linkWhatsApp(telefone) {
+  const numero = limparTelefone(telefone);
+  if (!numero) return "-";
+  const numeroFinal = numero.startsWith("55") ? numero : "55" + numero;
+  return `<a class="whatsapp-link" href="https://wa.me/${numeroFinal}" target="_blank">${telefone}</a>`;
 }
 
 async function validarLogin() {
@@ -547,7 +617,8 @@ async function cadastrarMotorista() {
     action: "create",
     driver_id: driverId.value.trim(),
     driver_name: driverName.value.trim(),
-    vehicle_type: vehicleType.value
+    vehicle_type: vehicleType.value,
+    telephone: driverTelephone.value.trim()
   };
 
   if (!body.driver_id || !body.driver_name) return;
@@ -562,6 +633,7 @@ async function cadastrarMotorista() {
 
   driverId.value = "";
   driverName.value = "";
+  driverTelephone.value = "";
   vehicleType.value = "FIORINO";
   fecharModal("modalMotorista");
 }
@@ -578,10 +650,10 @@ function normalizarVeiculo(valor) {
 
 function baixarModeloMotoristas() {
   const dados = [
-    ["driver_id", "driver_name", "vehicle_type"],
-    ["123456", "MOTORISTA EXEMPLO", "FIORINO"],
-    ["789012", "MOTORISTA EXEMPLO 2", "PASSEIO"],
-    ["555888", "MOTORISTA EXEMPLO 3", "MOTO"]
+    ["driver_id", "driver_name", "vehicle_type", "telephone"],
+    ["123456", "MOTORISTA EXEMPLO", "FIORINO", "11999998888"],
+    ["789012", "MOTORISTA EXEMPLO 2", "PASSEIO", "11988887777"],
+    ["555888", "MOTORISTA EXEMPLO 3", "MOTO", "11977776666"]
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(dados);
@@ -649,15 +721,17 @@ async function lerArquivoMotoristas(file) {
     const idxId = cabecalho.indexOf("driver_id");
     const idxNome = cabecalho.indexOf("driver_name");
     const idxVeiculo = cabecalho.indexOf("vehicle_type");
+    const idxTelefone = cabecalho.indexOf("telephone");
 
     if (idxId === -1 || idxNome === -1 || idxVeiculo === -1) {
-      throw new Error("O arquivo precisa ter as colunas: driver_id, driver_name, vehicle_type");
+      throw new Error("O arquivo precisa ter as colunas: driver_id, driver_name, vehicle_type, telephone");
     }
 
     return linhas.slice(1).map(l => ({
       driver_id: normalizarTexto(l[idxId]),
       driver_name: normalizarTexto(l[idxNome]),
-      vehicle_type: normalizarVeiculo(l[idxVeiculo])
+      vehicle_type: normalizarVeiculo(l[idxVeiculo]),
+      telephone: idxTelefone >= 0 ? normalizarTexto(l[idxTelefone]) : ""
     }));
   }
 
@@ -670,7 +744,8 @@ async function lerArquivoMotoristas(file) {
     return json.map(row => ({
       driver_id: normalizarTexto(row.driver_id),
       driver_name: normalizarTexto(row.driver_name),
-      vehicle_type: normalizarVeiculo(row.vehicle_type)
+      vehicle_type: normalizarVeiculo(row.vehicle_type),
+      telephone: normalizarTexto(row.telephone)
     }));
   }
 
@@ -753,6 +828,7 @@ async function consultarMotorista() {
   mId.innerText = d.driver_id;
   mNome.innerText = d.driver_name;
   mVeiculo.innerText = d.vehicle_type;
+  mTelefone.innerHTML = linkWhatsApp(d.telephone);
   mStatus.innerHTML = d.active ? "ATIVO" : "DESATIVADO";
   mStatus.className = d.active ? "on badge" : "off badge";
   mPunicao.innerText = d.punished_until || "-";
@@ -855,6 +931,7 @@ async function carregarRotasAdmin(forcar = false) {
       <p><strong>Motorista:</strong> ${r.claimed_by_driver_name || "-"}</p>
       <p><strong>ID:</strong> ${r.claimed_by_driver_id || "-"}</p>
       <p><strong>Veículo do motorista:</strong> ${r.status === "repassada" ? (r.claimed_vehicle_type || "-") : "-"}</p>
+      <p><strong>Telefone:</strong> ${r.status === "repassada" ? linkWhatsApp(r.claimed_telephone) : "-"}</p>
       <p><strong>Horário:</strong> ${formatarData(r.claimed_at) || "-"}</p>
 
       <div class="modal-actions">
@@ -959,6 +1036,7 @@ function abrirNotificacoes() {
         <p><strong>Motorista:</strong> ${n.claimed_by_driver_name || "-"}</p>
         <p><strong>ID:</strong> ${n.claimed_by_driver_id || "-"}</p>
         <p><strong>Veículo do motorista:</strong> ${n.claimed_vehicle_type || "-"}</p>
+        <p><strong>Telefone:</strong> ${linkWhatsApp(n.claimed_telephone)}</p>
         <p><strong>Região:</strong> ${n.region || "-"}</p>
         <p><strong>Horário:</strong> ${formatarData(n.claimed_at) || "-"}</p>
       </div>
@@ -1002,6 +1080,74 @@ async function verificarNovosRepasses() {
 
 async function iniciarMonitoramento() {
   await atualizarBaseRotas(true);
+}
+
+
+async function abrirConfigGalpao() {
+  abrirModal("modalConfigGalpao");
+
+  const res = await fetch("hub-config.php", {
+    headers: headersGetAdmin()
+  });
+
+  if (res.status !== 200) return;
+
+  const cfg = await res.json();
+
+  hubName.value = cfg.hub_name || "";
+  hubLatitude.value = cfg.latitude || "";
+  hubLongitude.value = cfg.longitude || "";
+  hubRadius.value = cfg.radius_meters || "";
+}
+
+async function salvarConfigGalpao() {
+  const body = {
+    hub_name: hubName.value.trim(),
+    latitude: hubLatitude.value.trim(),
+    longitude: hubLongitude.value.trim(),
+    radius_meters: hubRadius.value.trim()
+  };
+
+  if (!body.hub_name || !body.latitude || !body.longitude || !body.radius_meters) return;
+
+  const res = await fetch("hub-config.php", {
+    method: "POST",
+    headers: headersAdmin(),
+    body: JSON.stringify(body)
+  });
+
+  if (res.status !== 200) return;
+
+  fecharModal("modalConfigGalpao");
+}
+
+async function abrirAguardandoGalpao() {
+  abrirModal("modalAguardandoGalpao");
+  await carregarAguardandoGalpao();
+}
+
+async function carregarAguardandoGalpao() {
+  const res = await fetch("admin-waiting.php", {
+    headers: headersGetAdmin()
+  });
+
+  if (res.status !== 200) return;
+
+  const lista = await res.json();
+
+  listaAguardandoGalpao.innerHTML = lista.length ? lista.map(m => `
+    <div class="waiting-item">
+      <div class="route-top">
+        <h3>${m.driver_name}</h3>
+        <span class="badge on">AGUARDANDO</span>
+      </div>
+      <p><strong>ID:</strong> ${m.driver_id}</p>
+      <p><strong>Veículo:</strong> ${m.vehicle_type}</p>
+      <p><strong>Telefone:</strong> ${linkWhatsApp(m.telephone)}</p>
+      <p><strong>Distância:</strong> ${Math.round(Number(m.distance_meters || 0))}m do galpão</p>
+      <p><strong>Horário:</strong> ${formatarData(m.created_at)}</p>
+    </div>
+  `).join("") : `<div class="notice">Nenhum motorista aguardando no galpão hoje.</div>`;
 }
 
 loginSenha.addEventListener("keydown", e => {
