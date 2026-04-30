@@ -854,6 +854,7 @@ async function carregarRotasAdmin(forcar = false) {
       <p><strong>Veículos:</strong> ${formatarVeiculos(r.allowed_vehicles)}</p>
       <p><strong>Motorista:</strong> ${r.claimed_by_driver_name || "-"}</p>
       <p><strong>ID:</strong> ${r.claimed_by_driver_id || "-"}</p>
+      <p><strong>Veículo do motorista:</strong> ${r.status === "repassada" ? (r.claimed_vehicle_type || "-") : "-"}</p>
       <p><strong>Horário:</strong> ${formatarData(r.claimed_at) || "-"}</p>
 
       <div class="modal-actions">
@@ -957,6 +958,7 @@ function abrirNotificacoes() {
         </div>
         <p><strong>Motorista:</strong> ${n.claimed_by_driver_name || "-"}</p>
         <p><strong>ID:</strong> ${n.claimed_by_driver_id || "-"}</p>
+        <p><strong>Veículo do motorista:</strong> ${n.claimed_vehicle_type || "-"}</p>
         <p><strong>Região:</strong> ${n.region || "-"}</p>
         <p><strong>Horário:</strong> ${formatarData(n.claimed_at) || "-"}</p>
       </div>

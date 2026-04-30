@@ -13,7 +13,21 @@ require_once "db.php";
 $conn = getConnection();
 
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
-    $stmt = $conn->query("SELECT * FROM routes ORDER BY created_at DESC");
+    $stmt = $conn->query("
+        SELECT 
+            r.*,
+            rc.vehicle_type AS claimed_vehicle_type
+        FROM routes r
+        LEFT JOIN LATERAL (
+            SELECT vehicle_type
+            FROM route_claims
+            WHERE route_id = r.id
+            ORDER BY claimed_at DESC
+            LIMIT 1
+        ) rc ON TRUE
+        ORDER BY r.created_at DESC
+    ");
+
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
     exit;
 }
