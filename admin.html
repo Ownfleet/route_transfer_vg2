@@ -15,25 +15,15 @@ body {
   color: white;
 }
 
-body.locked .app {
-  display: none;
-}
+body.locked .app { display: none; }
 
 .header {
   padding: 24px;
   background: linear-gradient(135deg, #ee4d2d, #111827);
-  border-bottom: 1px solid #263044;
 }
 
-.header h1 {
-  margin: 0;
-  font-size: 30px;
-}
-
-.header p {
-  margin: 6px 0 0;
-  color: #ffe5dc;
-}
+.header h1 { margin: 0; font-size: 30px; }
+.header p { margin: 6px 0 0; color: #ffe5dc; }
 
 .container {
   padding: 24px;
@@ -45,19 +35,6 @@ body.locked .app {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.card {
-  background: #111827;
-  border: 1px solid #263044;
-  border-radius: 22px;
-  padding: 22px;
-  box-shadow: 0 15px 35px rgba(0,0,0,.35);
-}
-
-.card h2 {
-  margin-top: 0;
-  color: #ffb199;
 }
 
 button {
@@ -77,6 +54,42 @@ button:hover { background: #ff6a3d; }
 .btn-ok { background: #16a34a; }
 .btn-danger { background: #991b1b; }
 
+.card {
+  background: #111827;
+  border: 1px solid #263044;
+  border-radius: 22px;
+  padding: 22px;
+  box-shadow: 0 15px 35px rgba(0,0,0,.35);
+}
+
+.card h2 {
+  margin-top: 0;
+  color: #ffb199;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.info-box {
+  background: #020617;
+  border: 1px solid #263044;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.info-box small {
+  color: #94a3b8;
+}
+
+.info-box strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 18px;
+}
+
 input, select {
   width: 100%;
   padding: 14px;
@@ -88,42 +101,7 @@ input, select {
   outline: none;
 }
 
-input:focus, select:focus {
-  border-color: #ee4d2d;
-}
-
-.table-wrap {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 900px;
-}
-
-th, td {
-  padding: 13px;
-  border-bottom: 1px solid #263044;
-  text-align: left;
-}
-
-th {
-  color: #ffb199;
-  background: #0b1020;
-}
-
-.badge {
-  padding: 7px 11px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.on { background: #064e3b; color: #86efac; }
-.off { background: #450a0a; color: #fca5a5; }
-.route-ok { background: #1e3a8a; color: #bfdbfe; }
-.route-done { background: #713f12; color: #fde68a; }
+input:focus, select:focus { border-color: #ee4d2d; }
 
 .modal {
   display: none;
@@ -136,18 +114,22 @@ th {
   padding: 18px;
 }
 
-.modal.show {
-  display: flex;
-}
+.modal.show { display: flex; }
 
 .modal-box {
   width: 100%;
-  max-width: 480px;
+  max-width: 560px;
+  max-height: 92vh;
+  overflow-y: auto;
   background: linear-gradient(145deg, #111827, #080d1c);
   border: 1px solid #374151;
   border-radius: 24px;
   padding: 24px;
   box-shadow: 0 25px 60px rgba(0,0,0,.55);
+}
+
+.modal-box.large {
+  max-width: 980px;
 }
 
 .modal-box h2 {
@@ -164,7 +146,7 @@ th {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .checks {
@@ -181,15 +163,40 @@ th {
   border: 1px solid #374151;
 }
 
-.login-logo {
-  width: 58px;
-  height: 58px;
-  border-radius: 18px;
-  background: #ee4d2d;
+.badge {
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.on { background: #064e3b; color: #86efac; }
+.off { background: #450a0a; color: #fca5a5; }
+.route-ok { background: #1e3a8a; color: #bfdbfe; }
+.route-done { background: #713f12; color: #fde68a; }
+
+.route-list {
   display: grid;
-  place-items: center;
-  font-size: 26px;
-  margin-bottom: 14px;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.route-item {
+  background: #020617;
+  border: 1px solid #263044;
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.route-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.route-top h3 {
+  margin: 0;
 }
 
 .small {
@@ -210,53 +217,22 @@ th {
   <div class="container">
     <div class="actions">
       <button onclick="abrirModal('modalMotorista')">+ Novo motorista</button>
+      <button onclick="abrirModal('modalConsultaMotorista')">Consultar motorista</button>
       <button onclick="abrirModal('modalRota')">+ Divulgar rota</button>
+      <button onclick="abrirGerenciarRotas()">Gerenciar rotas</button>
       <button class="btn-dark" onclick="sairAdmin()">Sair do admin</button>
     </div>
 
     <div class="card">
-      <h2>Motoristas cadastrados</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nome</th>
-              <th>Veículo</th>
-              <th>Status</th>
-              <th>Punição até</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="driversTable"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Rotas divulgadas</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Rota</th>
-              <th>Região</th>
-              <th>Veículos</th>
-              <th>Status</th>
-              <th>Motorista</th>
-              <th>Horário</th>
-            </tr>
-          </thead>
-          <tbody id="routesTable"></tbody>
-        </table>
-      </div>
+      <h2>Resumo do painel</h2>
+      <p>Use os botões acima para cadastrar, consultar motoristas, divulgar rotas e gerenciar rotas já criadas.</p>
+      <p class="small">A lista completa de motoristas não fica exposta para evitar lentidão e poluição visual.</p>
     </div>
   </div>
 </div>
 
 <div class="modal show" id="modalLogin">
   <div class="modal-box">
-    <div class="login-logo">🔐</div>
     <h2>Acesso administrativo</h2>
     <p>Informe a senha para acessar o painel de controle.</p>
     <input id="loginSenha" type="password" placeholder="Senha do admin" autocomplete="off">
@@ -267,7 +243,7 @@ th {
 <div class="modal" id="modalMotorista">
   <div class="modal-box">
     <h2>Cadastrar motorista</h2>
-    <p>Adicione um motorista à base para permitir participação nas rotas.</p>
+    <p>Adicione um motorista à base.</p>
     <input id="driverId" placeholder="ID do motorista">
     <input id="driverName" placeholder="Nome do motorista">
     <select id="vehicleType">
@@ -278,6 +254,35 @@ th {
     <div class="modal-actions">
       <button onclick="cadastrarMotorista()">Cadastrar</button>
       <button class="btn-dark" onclick="fecharModal('modalMotorista')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalConsultaMotorista">
+  <div class="modal-box">
+    <h2>Consultar motorista</h2>
+    <p>Digite o ID para consultar e aplicar tratativas.</p>
+    <input id="consultaDriverId" placeholder="ID do motorista">
+    <button onclick="consultarMotorista()">Consultar</button>
+
+    <div id="resultadoMotorista" style="display:none; margin-top:18px;">
+      <div class="info-grid">
+        <div class="info-box"><small>ID</small><strong id="mId"></strong></div>
+        <div class="info-box"><small>Nome</small><strong id="mNome"></strong></div>
+        <div class="info-box"><small>Veículo</small><strong id="mVeiculo"></strong></div>
+        <div class="info-box"><small>Status</small><strong id="mStatus"></strong></div>
+        <div class="info-box"><small>Punição até</small><strong id="mPunicao"></strong></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-dark" onclick="acaoMotoristaModal('toggle')">Ativar/Desativar</button>
+        <button class="btn-warn" onclick="acaoMotoristaModal('punish')">Punir 15h</button>
+        <button class="btn-ok" onclick="acaoMotoristaModal('remove_punish')">Remover punição</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-dark" onclick="fecharModal('modalConsultaMotorista')">Fechar</button>
     </div>
   </div>
 </div>
@@ -302,6 +307,36 @@ th {
   </div>
 </div>
 
+<div class="modal" id="modalGerenciarRotas">
+  <div class="modal-box large">
+    <h2>Gerenciar rotas</h2>
+    <p>Edite, reabra ou exclua rotas divulgadas.</p>
+    <div id="listaRotas" class="route-list"></div>
+    <div class="modal-actions">
+      <button class="btn-dark" onclick="fecharModal('modalGerenciarRotas')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalEditarRota">
+  <div class="modal-box">
+    <h2>Editar rota</h2>
+    <input id="editRouteName" placeholder="Rota">
+    <input id="editRegion" placeholder="Região">
+
+    <div class="checks">
+      <label><input type="checkbox" value="FIORINO" class="editVehicle"> FIORINO</label>
+      <label><input type="checkbox" value="PASSEIO" class="editVehicle"> PASSEIO</label>
+      <label><input type="checkbox" value="MOTO" class="editVehicle"> MOTO</label>
+    </div>
+
+    <div class="modal-actions">
+      <button onclick="salvarEdicaoRota()">Salvar edição</button>
+      <button class="btn-dark" onclick="fecharModal('modalEditarRota')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="modalConfirmacao">
   <div class="modal-box">
     <h2 id="confirmTitulo">Confirmar ação</h2>
@@ -316,7 +351,8 @@ th {
 <script>
 const API = "https://truthful-acceptance-production-fb55.up.railway.app";
 let ADMIN_TOKEN = localStorage.getItem("ADMIN_TOKEN") || "";
-let carregando = false;
+let motoristaAtual = null;
+let rotaEditando = null;
 
 function abrirModal(id) {
   document.getElementById(id).classList.add("show");
@@ -349,12 +385,6 @@ async function validarLogin() {
   localStorage.setItem("ADMIN_TOKEN", ADMIN_TOKEN);
   document.body.classList.remove("locked");
   fecharModal("modalLogin");
-  carregarDados();
-}
-
-function sairAdmin() {
-  localStorage.removeItem("ADMIN_TOKEN");
-  location.reload();
 }
 
 async function tentarLoginSalvo() {
@@ -367,11 +397,15 @@ async function tentarLoginSalvo() {
   if (res.status === 200) {
     document.body.classList.remove("locked");
     fecharModal("modalLogin");
-    carregarDados();
   } else {
     localStorage.removeItem("ADMIN_TOKEN");
     ADMIN_TOKEN = "";
   }
+}
+
+function sairAdmin() {
+  localStorage.removeItem("ADMIN_TOKEN");
+  location.reload();
 }
 
 function confirmarAcao(titulo, texto, callback) {
@@ -405,7 +439,57 @@ async function cadastrarMotorista() {
   driverId.value = "";
   driverName.value = "";
   fecharModal("modalMotorista");
-  carregarDados();
+}
+
+async function consultarMotorista() {
+  const id = consultaDriverId.value.trim();
+  if (!id) return;
+
+  const res = await fetch(API + "/admin-drivers.php?driver_id=" + encodeURIComponent(id), {
+    headers: { "X-Admin-Token": ADMIN_TOKEN }
+  });
+
+  if (res.status !== 200) return;
+
+  const d = await res.json();
+
+  if (!d) {
+    resultadoMotorista.style.display = "none";
+    return;
+  }
+
+  motoristaAtual = d;
+
+  mId.innerText = d.driver_id;
+  mNome.innerText = d.driver_name;
+  mVeiculo.innerText = d.vehicle_type;
+  mStatus.innerHTML = d.active ? "ATIVO" : "DESATIVADO";
+  mPunicao.innerText = d.punished_until || "-";
+
+  resultadoMotorista.style.display = "block";
+}
+
+function acaoMotoristaModal(action) {
+  if (!motoristaAtual) return;
+
+  const texto = {
+    toggle: `Deseja ativar ou desativar o motorista ${motoristaAtual.driver_name}?`,
+    punish: `Deseja bloquear temporariamente ${motoristaAtual.driver_name} por 15 horas?`,
+    remove_punish: `Deseja remover o bloqueio temporário de ${motoristaAtual.driver_name}?`
+  };
+
+  confirmarAcao("Confirmar tratativa", texto[action], async () => {
+    await fetch(API + "/admin-drivers.php", {
+      method: "POST",
+      headers: headersAdmin(),
+      body: JSON.stringify({
+        action,
+        driver_id: motoristaAtual.driver_id
+      })
+    });
+
+    consultarMotorista();
+  });
 }
 
 async function divulgarRota() {
@@ -417,6 +501,7 @@ async function divulgarRota() {
     method: "POST",
     headers: headersAdmin(),
     body: JSON.stringify({
+      action: "create",
       route_name: routeName.value.trim(),
       region: region.value.trim(),
       allowed_vehicles: selected
@@ -429,73 +514,100 @@ async function divulgarRota() {
   region.value = "";
   document.querySelectorAll(".vehicle").forEach(c => c.checked = false);
   fecharModal("modalRota");
-  carregarDados();
 }
 
-function acaoMotoristaModal(action, driver_id, nome) {
-  const textos = {
-    toggle: `Deseja ativar ou desativar o motorista ${nome}?`,
-    punish: `Deseja bloquear temporariamente o motorista ${nome} por 15 horas?`,
-    remove_punish: `Deseja remover o bloqueio temporário do motorista ${nome}?`
-  };
+async function abrirGerenciarRotas() {
+  abrirModal("modalGerenciarRotas");
+  carregarRotasAdmin();
+}
 
-  confirmarAcao("Confirmar alteração", textos[action], async () => {
-    await fetch(API + "/admin-drivers.php", {
+async function carregarRotasAdmin() {
+  const res = await fetch(API + "/admin-routes.php", {
+    headers: { "X-Admin-Token": ADMIN_TOKEN }
+  });
+
+  if (res.status !== 200) return;
+
+  const rotas = await res.json();
+
+  listaRotas.innerHTML = rotas.map(r => `
+    <div class="route-item">
+      <div class="route-top">
+        <h3>${r.route_name}</h3>
+        <span class="badge ${r.status === "disponivel" ? "route-ok" : "route-done"}">${r.status}</span>
+      </div>
+      <p><strong>Região:</strong> ${r.region}</p>
+      <p><strong>Veículos:</strong> ${r.allowed_vehicles}</p>
+      <p><strong>Motorista:</strong> ${r.claimed_by_driver_name || "-"}</p>
+      <p><strong>Horário:</strong> ${r.claimed_at || "-"}</p>
+
+      <div class="modal-actions">
+        <button class="btn-dark" onclick='abrirEditarRota(${JSON.stringify(r)})'>Editar</button>
+        <button class="btn-ok" onclick="reabrirRota(${r.id})">Reabrir rota</button>
+        <button class="btn-danger" onclick="excluirRota(${r.id})">Excluir</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function parseVehicles(value) {
+  return String(value).replace("{", "").replace("}", "").split(",").filter(Boolean);
+}
+
+function abrirEditarRota(rota) {
+  rotaEditando = rota;
+  editRouteName.value = rota.route_name;
+  editRegion.value = rota.region;
+
+  const veiculos = parseVehicles(rota.allowed_vehicles);
+  document.querySelectorAll(".editVehicle").forEach(c => {
+    c.checked = veiculos.includes(c.value);
+  });
+
+  abrirModal("modalEditarRota");
+}
+
+async function salvarEdicaoRota() {
+  const selected = [...document.querySelectorAll(".editVehicle:checked")].map(c => c.value);
+
+  if (!rotaEditando || !editRouteName.value.trim() || !editRegion.value.trim() || selected.length === 0) return;
+
+  await fetch(API + "/admin-routes.php", {
+    method: "POST",
+    headers: headersAdmin(),
+    body: JSON.stringify({
+      action: "edit",
+      id: rotaEditando.id,
+      route_name: editRouteName.value.trim(),
+      region: editRegion.value.trim(),
+      allowed_vehicles: selected
+    })
+  });
+
+  fecharModal("modalEditarRota");
+  carregarRotasAdmin();
+}
+
+function reabrirRota(id) {
+  confirmarAcao("Reabrir rota", "Essa rota voltará a ficar disponível para os motoristas.", async () => {
+    await fetch(API + "/admin-routes.php", {
       method: "POST",
       headers: headersAdmin(),
-      body: JSON.stringify({ action, driver_id })
+      body: JSON.stringify({ action: "reopen", id })
     });
-    carregarDados();
+    carregarRotasAdmin();
   });
 }
 
-async function carregarDados() {
-  if (carregando || document.body.classList.contains("locked")) return;
-  carregando = true;
-
-  const driversRes = await fetch(API + "/admin-drivers.php", {
-    headers: { "X-Admin-Token": ADMIN_TOKEN }
+function excluirRota(id) {
+  confirmarAcao("Excluir rota", "Essa ação removerá a rota do sistema.", async () => {
+    await fetch(API + "/admin-routes.php", {
+      method: "POST",
+      headers: headersAdmin(),
+      body: JSON.stringify({ action: "delete", id })
+    });
+    carregarRotasAdmin();
   });
-
-  const routesRes = await fetch(API + "/admin-routes.php", {
-    headers: { "X-Admin-Token": ADMIN_TOKEN }
-  });
-
-  if (driversRes.status !== 200 || routesRes.status !== 200) {
-    carregando = false;
-    return;
-  }
-
-  const drivers = await driversRes.json();
-  const routes = await routesRes.json();
-
-  driversTable.innerHTML = drivers.map(d => `
-    <tr>
-      <td>${d.driver_id}</td>
-      <td>${d.driver_name}</td>
-      <td>${d.vehicle_type}</td>
-      <td><span class="badge ${d.active ? "on" : "off"}">${d.active ? "ATIVO" : "DESATIVADO"}</span></td>
-      <td>${d.punished_until || "-"}</td>
-      <td>
-        <button class="btn-dark" onclick="acaoMotoristaModal('toggle','${d.driver_id}','${d.driver_name}')">Ativar/Desativar</button>
-        <button class="btn-warn" onclick="acaoMotoristaModal('punish','${d.driver_id}','${d.driver_name}')">Punir 15h</button>
-        <button class="btn-ok" onclick="acaoMotoristaModal('remove_punish','${d.driver_id}','${d.driver_name}')">Remover punição</button>
-      </td>
-    </tr>
-  `).join("");
-
-  routesTable.innerHTML = routes.map(r => `
-    <tr>
-      <td>${r.route_name}</td>
-      <td>${r.region}</td>
-      <td>${r.allowed_vehicles}</td>
-      <td><span class="badge ${r.status === "disponivel" ? "route-ok" : "route-done"}">${r.status}</span></td>
-      <td>${r.claimed_by_driver_name || "-"}</td>
-      <td>${r.claimed_at || "-"}</td>
-    </tr>
-  `).join("");
-
-  carregando = false;
 }
 
 loginSenha.addEventListener("keydown", e => {
@@ -503,7 +615,6 @@ loginSenha.addEventListener("keydown", e => {
 });
 
 tentarLoginSalvo();
-setInterval(carregarDados, 5000);
 </script>
 
 </body>

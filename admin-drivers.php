@@ -15,12 +15,19 @@ if (!$realToken || $adminToken !== $realToken) {
 }
 
 require_once "db.php";
-
 $conn = getConnection();
 
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
-    $stmt = $conn->query("SELECT * FROM drivers ORDER BY created_at DESC");
-    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    $driverId = trim($_GET["driver_id"] ?? "");
+
+    if ($driverId) {
+        $stmt = $conn->prepare("SELECT * FROM drivers WHERE driver_id = ?");
+        $stmt->execute([$driverId]);
+        echo json_encode($stmt->fetch(PDO::FETCH_ASSOC) ?: null);
+        exit;
+    }
+
+    echo json_encode([]);
     exit;
 }
 
@@ -37,6 +44,7 @@ if ($action === "create") {
         trim($data["driver_name"]),
         $data["vehicle_type"]
     ]);
+
     echo json_encode(["success" => true]);
     exit;
 }
