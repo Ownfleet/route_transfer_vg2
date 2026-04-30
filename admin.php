@@ -407,9 +407,9 @@ input:focus, select:focus { border-color: #ee4d2d; }
 </div>
 
 <script>
-const API = "https://truthful-acceptance-production-fb55.up.railway.app";
+const API = "";
 
-let ADMIN_TOKEN = localStorage.getItem("ADMIN_TOKEN") || "";
+
 let motoristaAtual = null;
 let rotaEditando = null;
 let notificacoes = [];
@@ -430,23 +430,26 @@ function existeModalAbertoSemLogin() {
 
 function headersAdmin() {
   return {
-    "Content-Type": "application/json",
-    "X-Admin-Token": ADMIN_TOKEN
+    "Content-Type": "application/json"
   };
 }
 
 function headersGetAdmin() {
-  return {
-    "X-Admin-Token": ADMIN_TOKEN
-  };
+  return {};
 }
 
 async function validarLogin() {
-  ADMIN_TOKEN = loginSenha.value.trim();
-  if (!ADMIN_TOKEN) return;
+  const senhaDigitada = loginSenha.value.trim();
+  if (!senhaDigitada) return;
 
-  const res = await fetch(API + "/admin-drivers.php", {
-    headers: headersGetAdmin()
+  const res = await fetch("login.php", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      password: senhaDigitada
+    })
   });
 
   if (res.status !== 200) {
@@ -454,31 +457,26 @@ async function validarLogin() {
     return;
   }
 
-  localStorage.setItem("ADMIN_TOKEN", ADMIN_TOKEN);
   document.body.classList.remove("locked");
   fecharModal("modalLogin");
   await iniciarMonitoramento();
 }
 
 async function tentarLoginSalvo() {
-  if (!ADMIN_TOKEN) return;
+  const res = await fetch("check-session.php");
+  if (res.status !== 200) return;
 
-  const res = await fetch(API + "/admin-drivers.php", {
-    headers: headersGetAdmin()
-  });
+  const data = await res.json();
 
-  if (res.status === 200) {
+  if (data.logged) {
     document.body.classList.remove("locked");
     fecharModal("modalLogin");
     await iniciarMonitoramento();
-  } else {
-    localStorage.removeItem("ADMIN_TOKEN");
-    ADMIN_TOKEN = "";
   }
 }
 
-function sairAdmin() {
-  localStorage.removeItem("ADMIN_TOKEN");
+async function sairAdmin() {
+  await fetch("logout.php");
   location.reload();
 }
 
@@ -502,7 +500,7 @@ async function cadastrarMotorista() {
 
   if (!body.driver_id || !body.driver_name) return;
 
-  const res = await fetch(API + "/admin-drivers.php", {
+  const res = await fetch("admin-drivers.php", {
     method: "POST",
     headers: headersAdmin(),
     body: JSON.stringify(body)
@@ -520,7 +518,7 @@ async function consultarMotorista() {
   const id = consultaDriverId.value.trim();
   if (!id) return;
 
-  const res = await fetch(API + "/admin-drivers.php?driver_id=" + encodeURIComponent(id), {
+  const res = await fetch("admin-drivers.php?driver_id=" + encodeURIComponent(id), {
     headers: headersGetAdmin()
   });
 
@@ -555,7 +553,7 @@ function acaoMotoristaModal(action) {
   };
 
   confirmarAcao("Confirmar tratativa", texto[action], async () => {
-    await fetch(API + "/admin-drivers.php", {
+    await fetch("admin-drivers.php", {
       method: "POST",
       headers: headersAdmin(),
       body: JSON.stringify({
@@ -573,7 +571,7 @@ async function divulgarRota() {
 
   if (!routeName.value.trim() || !region.value.trim() || selected.length === 0) return;
 
-  const res = await fetch(API + "/admin-routes.php", {
+  const res = await fetch("admin-routes.php", {
     method: "POST",
     headers: headersAdmin(),
     body: JSON.stringify({
@@ -612,7 +610,7 @@ function textoStatus(status) {
 }
 
 async function buscarRotasAdmin() {
-  const res = await fetch(API + "/admin-routes.php", {
+  const res = await fetch("admin-routes.php", {
     headers: headersGetAdmin()
   });
 
@@ -688,7 +686,7 @@ async function salvarEdicaoRota() {
 
   if (!rotaEditando || !editRouteName.value.trim() || !editRegion.value.trim() || selected.length === 0) return;
 
-  await fetch(API + "/admin-routes.php", {
+  await fetch("admin-routes.php", {
     method: "POST",
     headers: headersAdmin(),
     body: JSON.stringify({
@@ -707,7 +705,7 @@ async function salvarEdicaoRota() {
 
 function reabrirRota(id) {
   confirmarAcao("Reabrir rota", "Essa rota voltará a ficar disponível para os motoristas.", async () => {
-    await fetch(API + "/admin-routes.php", {
+    await fetch("admin-routes.php", {
       method: "POST",
       headers: headersAdmin(),
       body: JSON.stringify({ action: "reopen", id })
@@ -719,7 +717,7 @@ function reabrirRota(id) {
 
 function excluirRota(id) {
   confirmarAcao("Excluir rota", "Essa ação removerá a rota do sistema.", async () => {
-    await fetch(API + "/admin-routes.php", {
+    await fetch("admin-routes.php", {
       method: "POST",
       headers: headersAdmin(),
       body: JSON.stringify({ action: "delete", id })
