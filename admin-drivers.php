@@ -32,10 +32,15 @@ $action = $data["action"] ?? "";
 if ($action === "create") {
     $driverId = trim($data["driver_id"] ?? "");
     $driverName = trim($data["driver_name"] ?? "");
-    $vehicleType = trim($data["vehicle_type"] ?? "");
+    $vehicleType = strtoupper(trim($data["vehicle_type"] ?? ""));
 
     if (!$driverId || !$driverName || !$vehicleType) {
         echo json_encode(["error" => "Preencha todos os campos"]);
+        exit;
+    }
+
+    if (!in_array($vehicleType, ["FIORINO", "PASSEIO", "MOTO"])) {
+        echo json_encode(["error" => "Tipo de veículo inválido"]);
         exit;
     }
 
@@ -47,6 +52,64 @@ if ($action === "create") {
     $stmt->execute([$driverId, $driverName, $vehicleType]);
 
     echo json_encode(["success" => true]);
+    exit;
+}
+
+if ($action === "bulk_create") {
+    $drivers = $data["drivers"] ?? [];
+
+    if (!is_array($drivers) || count($drivers) === 0) {
+        echo json_encode(["error" => "Nenhum motorista enviado"]);
+        exit;
+    }
+
+    $stmt = $conn->prepare("
+        INSERT INTO drivers (driver_id, driver_name, vehicle_type)
+        VALUES (?, ?, ?)
+        ON CONFLICT (driver_id) DO UPDATE SET
+            driver_name = EXCLUDED.driver_name,
+            vehicle_type = EXCLUDED.vehicle_type
+    ");
+
+    $importados = 0;
+    $ignorados = 0;
+    $erros = [];
+
+    foreach ($drivers as $index => $d) {
+        $linha = $index + 2;
+
+        $driverId = trim($d["driver_id"] ?? "");
+        $driverName = trim($d["driver_name"] ?? "");
+        $vehicleType = strtoupper(trim($d["vehicle_type"] ?? ""));
+
+        if (!$driverId || !$driverName || !$vehicleType) {
+            $ignorados++;
+            $erros[] = "Linha $linha ignorada: campos vazios";
+            continue;
+        }
+
+        if (!in_array($vehicleType, ["FIORINO", "PASSEIO", "MOTO"])) {
+            $ignorados++;
+            $erros[] = "Linha $linha ignorada: veículo inválido ($vehicleType)";
+            continue;
+        }
+
+        try {
+            $stmt->execute([$driverId, $driverName, $vehicleType]);
+            $importados++;
+        } catch (Exception $e) {
+            $ignorados++;
+            $erros[] = "Linha $linha ignorada: erro ao salvar";
+        }
+    }
+
+    echo json_encode([
+        "success" => true,
+        "message" => "Importação finalizada",
+        "importados" => $importados,
+        "ignorados" => $ignorados,
+        "erros" => $erros
+    ]);
     exit;
 }
 

@@ -249,6 +249,38 @@ input:focus, select:focus { border-color: #ee4d2d; }
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.import-box {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px dashed #374151;
+  background: #020617;
+}
+
+.import-box h3 {
+  margin: 0 0 8px;
+  color: #ffb199;
+}
+
+.import-box p {
+  margin: 6px 0;
+}
+
+.file-input {
+  border: 1px dashed #4b5563;
+}
+
+.result-box {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #0b1020;
+  border: 1px solid #263044;
+  color: #cbd5e1;
+  white-space: pre-line;
+}
+
 </style>
 </head>
 
@@ -298,9 +330,27 @@ input:focus, select:focus { border-color: #ee4d2d; }
       <option value="PASSEIO">PASSEIO</option>
       <option value="MOTO">MOTO</option>
     </select>
+
     <div class="modal-actions">
       <button onclick="cadastrarMotorista()">Cadastrar</button>
       <button class="btn-dark" onclick="fecharModal('modalMotorista')">Cancelar</button>
+    </div>
+
+    <div class="import-box">
+      <h3>Importar vários motoristas</h3>
+      <p class="small">Aceita arquivos CSV, XLSX ou XLS com as colunas: <strong>driver_id, driver_name, vehicle_type</strong>.</p>
+
+      <div class="modal-actions">
+        <button class="btn-info" onclick="baixarModeloMotoristas()">Baixar modelo Excel</button>
+      </div>
+
+      <input class="file-input" type="file" id="arquivoMotoristas" accept=".csv,.xlsx,.xls">
+
+      <div class="modal-actions">
+        <button onclick="importarMotoristasArquivo()">Importar arquivo</button>
+      </div>
+
+      <div id="resultadoImportacao" class="result-box hidden"></div>
     </div>
   </div>
 </div>
@@ -405,6 +455,8 @@ input:focus, select:focus { border-color: #ee4d2d; }
     </div>
   </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
 const API = "";
@@ -513,6 +565,171 @@ async function cadastrarMotorista() {
   vehicleType.value = "FIORINO";
   fecharModal("modalMotorista");
 }
+
+function normalizarTexto(valor) {
+  return String(valor ?? "").trim();
+}
+
+function normalizarVeiculo(valor) {
+  const v = normalizarTexto(valor).toUpperCase();
+  if (v === "FIORINO" || v === "PASSEIO" || v === "MOTO") return v;
+  return v;
+}
+
+function baixarModeloMotoristas() {
+  const dados = [
+    ["driver_id", "driver_name", "vehicle_type"],
+    ["123456", "MOTORISTA EXEMPLO", "FIORINO"],
+    ["789012", "MOTORISTA EXEMPLO 2", "PASSEIO"],
+    ["555888", "MOTORISTA EXEMPLO 3", "MOTO"]
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(dados);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Motoristas");
+
+  XLSX.writeFile(wb, "modelo_importacao_motoristas.xlsx");
+}
+
+function csvParaLinhas(texto) {
+  const linhas = [];
+  let atual = "";
+  let linha = [];
+  let dentroAspas = false;
+
+  for (let i = 0; i < texto.length; i++) {
+    const char = texto[i];
+    const prox = texto[i + 1];
+
+    if (char === '"' && dentroAspas && prox === '"') {
+      atual += '"';
+      i++;
+      continue;
+    }
+
+    if (char === '"') {
+      dentroAspas = !dentroAspas;
+      continue;
+    }
+
+    if (char === "," && !dentroAspas) {
+      linha.push(atual.trim());
+      atual = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !dentroAspas) {
+      if (char === "\r" && prox === "\n") i++;
+      linha.push(atual.trim());
+      if (linha.some(c => c !== "")) linhas.push(linha);
+      linha = [];
+      atual = "";
+      continue;
+    }
+
+    atual += char;
+  }
+
+  linha.push(atual.trim());
+  if (linha.some(c => c !== "")) linhas.push(linha);
+
+  return linhas;
+}
+
+async function lerArquivoMotoristas(file) {
+  const nome = file.name.toLowerCase();
+
+  if (nome.endsWith(".csv")) {
+    const texto = await file.text();
+    const linhas = csvParaLinhas(texto);
+
+    if (linhas.length < 2) return [];
+
+    const cabecalho = linhas[0].map(c => c.trim().toLowerCase());
+    const idxId = cabecalho.indexOf("driver_id");
+    const idxNome = cabecalho.indexOf("driver_name");
+    const idxVeiculo = cabecalho.indexOf("vehicle_type");
+
+    if (idxId === -1 || idxNome === -1 || idxVeiculo === -1) {
+      throw new Error("O arquivo precisa ter as colunas: driver_id, driver_name, vehicle_type");
+    }
+
+    return linhas.slice(1).map(l => ({
+      driver_id: normalizarTexto(l[idxId]),
+      driver_name: normalizarTexto(l[idxNome]),
+      vehicle_type: normalizarVeiculo(l[idxVeiculo])
+    }));
+  }
+
+  if (nome.endsWith(".xlsx") || nome.endsWith(".xls")) {
+    const buffer = await file.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+    return json.map(row => ({
+      driver_id: normalizarTexto(row.driver_id),
+      driver_name: normalizarTexto(row.driver_name),
+      vehicle_type: normalizarVeiculo(row.vehicle_type)
+    }));
+  }
+
+  throw new Error("Formato não aceito. Use CSV, XLSX ou XLS.");
+}
+
+async function importarMotoristasArquivo() {
+  const file = arquivoMotoristas.files[0];
+
+  resultadoImportacao.classList.add("hidden");
+  resultadoImportacao.innerText = "";
+
+  if (!file) return;
+
+  try {
+    const drivers = await lerArquivoMotoristas(file);
+
+    const validos = drivers.filter(d =>
+      d.driver_id &&
+      d.driver_name &&
+      ["FIORINO", "PASSEIO", "MOTO"].includes(d.vehicle_type)
+    );
+
+    if (validos.length === 0) {
+      resultadoImportacao.innerText = "Nenhum motorista válido encontrado no arquivo.";
+      resultadoImportacao.classList.remove("hidden");
+      return;
+    }
+
+    const res = await fetch("admin-drivers.php", {
+      method: "POST",
+      headers: headersAdmin(),
+      body: JSON.stringify({
+        action: "bulk_create",
+        drivers: validos
+      })
+    });
+
+    if (res.status !== 200) return;
+
+    const data = await res.json();
+
+    let texto = `Importação finalizada.\nImportados/atualizados: ${data.importados ?? 0}\nIgnorados: ${data.ignorados ?? 0}`;
+
+    if (data.erros && data.erros.length) {
+      texto += `\n\nOcorrências:\n${data.erros.slice(0, 15).join("\n")}`;
+      if (data.erros.length > 15) texto += `\n...e mais ${data.erros.length - 15} ocorrência(s).`;
+    }
+
+    resultadoImportacao.innerText = texto;
+    resultadoImportacao.classList.remove("hidden");
+    arquivoMotoristas.value = "";
+
+  } catch (err) {
+    resultadoImportacao.innerText = err.message || "Erro ao importar arquivo.";
+    resultadoImportacao.classList.remove("hidden");
+  }
+}
+
 
 async function consultarMotorista() {
   const id = consultaDriverId.value.trim();
