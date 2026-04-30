@@ -30,10 +30,10 @@ header p { margin: 6px 0 0; opacity: .85; }
   gap: 24px;
 }
 
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 20px;
+.top-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .card {
@@ -122,6 +122,37 @@ th {
   border-radius: 999px;
   border: 1px solid #374151;
 }
+
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.75);
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 20px;
+}
+
+.modal-box {
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 20px;
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.modal-box h2 {
+  margin-top: 0;
+  color: #ffb199;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 </style>
 </head>
 
@@ -129,37 +160,15 @@ th {
 
 <header>
   <h1>Painel Admin - Repasse de Rotas</h1>
-  <p>Cadastre motoristas, divulgue rotas e controle status em tempo real.</p>
+  <p>Controle motoristas, rotas, punições e repasses em tempo real.</p>
 </header>
 
 <div class="container">
 
-  <div class="cards">
-    <div class="card">
-      <h2>Cadastrar motorista</h2>
-      <input id="driverId" placeholder="ID do motorista">
-      <input id="driverName" placeholder="Nome do motorista">
-      <select id="vehicleType">
-        <option value="FIORINO">FIORINO</option>
-        <option value="PASSEIO">PASSEIO</option>
-        <option value="MOTO">MOTO</option>
-      </select>
-      <button onclick="cadastrarMotorista()">Cadastrar motorista</button>
-    </div>
-
-    <div class="card">
-      <h2>Divulgar rota</h2>
-      <input id="routeName" placeholder="Rota. Ex: B-14+B-15/120">
-      <input id="region" placeholder="Região. Ex: Guarulhos">
-
-      <div class="checks">
-        <label><input type="checkbox" value="FIORINO" class="vehicle"> FIORINO</label>
-        <label><input type="checkbox" value="PASSEIO" class="vehicle"> PASSEIO</label>
-        <label><input type="checkbox" value="MOTO" class="vehicle"> MOTO</label>
-      </div>
-
-      <button onclick="divulgarRota()">Divulgar rota</button>
-    </div>
+  <div class="top-actions">
+    <button onclick="abrirModal('modalMotorista')">+ Novo motorista</button>
+    <button onclick="abrirModal('modalRota')">+ Divulgar rota</button>
+    <button class="btn-dark" onclick="trocarSenha()">Trocar senha admin</button>
   </div>
 
   <div class="card">
@@ -202,8 +211,84 @@ th {
 
 </div>
 
+<div class="modal" id="modalMotorista">
+  <div class="modal-box">
+    <h2>Cadastrar motorista</h2>
+    <input id="driverId" placeholder="ID do motorista">
+    <input id="driverName" placeholder="Nome do motorista">
+    <select id="vehicleType">
+      <option value="FIORINO">FIORINO</option>
+      <option value="PASSEIO">PASSEIO</option>
+      <option value="MOTO">MOTO</option>
+    </select>
+    <div class="modal-actions">
+      <button onclick="cadastrarMotorista()">Cadastrar</button>
+      <button class="btn-dark" onclick="fecharModal('modalMotorista')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalRota">
+  <div class="modal-box">
+    <h2>Divulgar rota</h2>
+    <input id="routeName" placeholder="Rota. Ex: B-14+B-15/120">
+    <input id="region" placeholder="Região. Ex: Guarulhos">
+
+    <div class="checks">
+      <label><input type="checkbox" value="FIORINO" class="vehicle"> FIORINO</label>
+      <label><input type="checkbox" value="PASSEIO" class="vehicle"> PASSEIO</label>
+      <label><input type="checkbox" value="MOTO" class="vehicle"> MOTO</label>
+    </div>
+
+    <div class="modal-actions">
+      <button onclick="divulgarRota()">Divulgar</button>
+      <button class="btn-dark" onclick="fecharModal('modalRota')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = "https://truthful-acceptance-production-fb55.up.railway.app";
+
+let ADMIN_TOKEN = localStorage.getItem("ADMIN_TOKEN") || "";
+
+if (!ADMIN_TOKEN) {
+  ADMIN_TOKEN = prompt("Digite a senha do admin:");
+  localStorage.setItem("ADMIN_TOKEN", ADMIN_TOKEN);
+}
+
+function adminHeaders() {
+  return {
+    "Content-Type": "application/json",
+    "X-Admin-Token": ADMIN_TOKEN
+  };
+}
+
+function abrirModal(id) {
+  document.getElementById(id).style.display = "flex";
+}
+
+function fecharModal(id) {
+  document.getElementById(id).style.display = "none";
+}
+
+function trocarSenha() {
+  localStorage.removeItem("ADMIN_TOKEN");
+  location.reload();
+}
+
+async function tratarResposta(res) {
+  const data = await res.json();
+
+  if (res.status === 401) {
+    alert("Senha admin incorreta.");
+    localStorage.removeItem("ADMIN_TOKEN");
+    location.reload();
+    return null;
+  }
+
+  return data;
+}
 
 async function cadastrarMotorista() {
   const body = {
@@ -218,16 +303,24 @@ async function cadastrarMotorista() {
     return;
   }
 
-  await fetch(API + "/admin-drivers.php", {
+  const res = await fetch(API + "/admin-drivers.php", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: adminHeaders(),
     body: JSON.stringify(body)
   });
 
-  alert("Motorista cadastrado.");
-  driverId.value = "";
-  driverName.value = "";
-  carregarDados();
+  const data = await tratarResposta(res);
+  if (!data) return;
+
+  if (data.success) {
+    alert("Motorista cadastrado.");
+    driverId.value = "";
+    driverName.value = "";
+    fecharModal("modalMotorista");
+    carregarDados();
+  } else {
+    alert(data.error || "Erro ao cadastrar motorista.");
+  }
 }
 
 async function divulgarRota() {
@@ -238,9 +331,9 @@ async function divulgarRota() {
     return;
   }
 
-  await fetch(API + "/admin-routes.php", {
+  const res = await fetch(API + "/admin-routes.php", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: adminHeaders(),
     body: JSON.stringify({
       route_name: routeName.value.trim(),
       region: region.value.trim(),
@@ -248,26 +341,48 @@ async function divulgarRota() {
     })
   });
 
-  alert("Rota divulgada.");
-  routeName.value = "";
-  region.value = "";
-  document.querySelectorAll(".vehicle").forEach(c => c.checked = false);
-  carregarDados();
+  const data = await tratarResposta(res);
+  if (!data) return;
+
+  if (data.success) {
+    alert("Rota divulgada.");
+    routeName.value = "";
+    region.value = "";
+    document.querySelectorAll(".vehicle").forEach(c => c.checked = false);
+    fecharModal("modalRota");
+    carregarDados();
+  } else {
+    alert(data.error || "Erro ao divulgar rota.");
+  }
 }
 
 async function acaoMotorista(action, driver_id) {
-  await fetch(API + "/admin-drivers.php", {
+  const res = await fetch(API + "/admin-drivers.php", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: adminHeaders(),
     body: JSON.stringify({ action, driver_id })
   });
+
+  const data = await tratarResposta(res);
+  if (!data) return;
 
   carregarDados();
 }
 
 async function carregarDados() {
-  const drivers = await fetch(API + "/admin-drivers.php").then(r => r.json());
-  const routes = await fetch(API + "/admin-routes.php").then(r => r.json());
+  const driversRes = await fetch(API + "/admin-drivers.php", {
+    headers: { "X-Admin-Token": ADMIN_TOKEN }
+  });
+
+  const drivers = await tratarResposta(driversRes);
+  if (!drivers) return;
+
+  const routesRes = await fetch(API + "/admin-routes.php", {
+    headers: { "X-Admin-Token": ADMIN_TOKEN }
+  });
+
+  const routes = await tratarResposta(routesRes);
+  if (!routes) return;
 
   driversTable.innerHTML = drivers.map(d => `
     <tr>
