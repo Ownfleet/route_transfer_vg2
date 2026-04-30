@@ -1,18 +1,13 @@
 <?php
 header("Content-Type: application/json; charset=utf-8");
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type, X-Admin-Token");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") exit;
-
-$adminToken = $_SERVER["HTTP_X_ADMIN_TOKEN"] ?? "";
-$realToken = getenv("ADMIN_TOKEN");
-
-if (!$realToken || $adminToken !== $realToken) {
-    http_response_code(401);
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
     exit;
 }
+
+require_once "auth.php";
+require_admin();
 
 require_once "db.php";
 $conn = getConnection();
@@ -32,7 +27,7 @@ if ($action === "create") {
     $allowedVehicles = $data["allowed_vehicles"] ?? [];
 
     if (!$routeName || !$region || count($allowedVehicles) === 0) {
-        echo json_encode(["error" => "Preencha os campos obrigatórios"]);
+        echo json_encode(["error" => "Preencha rota, região e veículos"]);
         exit;
     }
 
@@ -42,6 +37,7 @@ if ($action === "create") {
         INSERT INTO routes (route_name, region, allowed_vehicles)
         VALUES (?, ?, ?)
     ");
+
     $stmt->execute([$routeName, $region, $vehicles]);
 
     echo json_encode(["success" => true]);
@@ -49,7 +45,17 @@ if ($action === "create") {
 }
 
 if ($action === "edit") {
-    $vehicles = "{" . implode(",", $data["allowed_vehicles"]) . "}";
+    $routeId = intval($data["id"] ?? 0);
+    $routeName = trim($data["route_name"] ?? "");
+    $region = trim($data["region"] ?? "");
+    $allowedVehicles = $data["allowed_vehicles"] ?? [];
+
+    if (!$routeId || !$routeName || !$region || count($allowedVehicles) === 0) {
+        echo json_encode(["error" => "Preencha todos os campos"]);
+        exit;
+    }
+
+    $vehicles = "{" . implode(",", $allowedVehicles) . "}";
 
     $stmt = $conn->prepare("
         UPDATE routes
@@ -58,18 +64,21 @@ if ($action === "edit") {
             allowed_vehicles = ?
         WHERE id = ?
     ");
-    $stmt->execute([
-        trim($data["route_name"]),
-        trim($data["region"]),
-        $vehicles,
-        intval($data["id"])
-    ]);
+
+    $stmt->execute([$routeName, $region, $vehicles, $routeId]);
 
     echo json_encode(["success" => true]);
     exit;
 }
 
 if ($action === "reopen") {
+    $routeId = intval($data["id"] ?? 0);
+
+    if (!$routeId) {
+        echo json_encode(["error" => "Rota inválida"]);
+        exit;
+    }
+
     $stmt = $conn->prepare("
         UPDATE routes
         SET status = 'disponivel',
@@ -78,14 +87,20 @@ if ($action === "reopen") {
             claimed_at = NULL
         WHERE id = ?
     ");
-    $stmt->execute([intval($data["id"])]);
+
+    $stmt->execute([$routeId]);
 
     echo json_encode(["success" => true]);
     exit;
 }
 
 if ($action === "delete") {
-    $routeId = intval($data["id"]);
+    $routeId = intval($data["id"] ?? 0);
+
+    if (!$routeId) {
+        echo json_encode(["error" => "Rota inválida"]);
+        exit;
+    }
 
     $stmt = $conn->prepare("DELETE FROM route_claims WHERE route_id = ?");
     $stmt->execute([$routeId]);
