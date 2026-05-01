@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rotas Disponíveis</title>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
 <style>
 * { box-sizing: border-box; }
 
@@ -155,8 +157,14 @@ button:disabled {
   border-radius: 24px;
   padding: 24px;
   width: 100%;
-  max-width: 420px;
+  max-width: 460px;
+  max-height: 92vh;
+  overflow-y: auto;
   box-shadow: 0 25px 60px rgba(0,0,0,.55);
+}
+
+.modal-box.large {
+  max-width: 720px;
 }
 
 .modal-box h2 {
@@ -185,6 +193,38 @@ input {
   background: #374151;
   margin-top: 10px;
 }
+
+#mapaGalpao {
+  width: 100%;
+  height: 330px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid #374151;
+  margin: 14px 0;
+}
+
+.map-info {
+  background: #020617;
+  border: 1px solid #263044;
+  border-radius: 16px;
+  padding: 14px;
+  margin: 12px 0;
+}
+
+.map-ok {
+  color: #86efac;
+  font-weight: bold;
+}
+
+.map-bad {
+  color: #fca5a5;
+  font-weight: bold;
+}
+
+.map-warn {
+  color: #fde68a;
+  font-weight: bold;
+}
 </style>
 </head>
 
@@ -210,11 +250,19 @@ input {
 </div>
 
 <div class="modal" id="modalAguardar">
-  <div class="modal-box">
+  <div class="modal-box large">
     <h2>Aguardar rota no galpão</h2>
-    <p>Digite seu ID e permita a localização do celular para registrar sua presença no galpão.</p>
+    <p>Digite seu ID e permita a localização do celular para analisar se você está dentro do raio permitido.</p>
     <input id="waitingDriverId" placeholder="Digite seu ID">
-    <button onclick="confirmarAguardarGalpao()">Registrar presença</button>
+
+    <div id="mapaGalpao"></div>
+
+    <div id="analiseLocalizacao" class="map-info">
+      O mapa será carregado após validar sua localização.
+    </div>
+
+    <button onclick="analisarLocalizacao()">Analisar localização</button>
+    <button id="btnRegistrarPresenca" style="display:none;" onclick="registrarPresencaConfirmada()">Confirmar presença no galpão</button>
     <button class="cancelar" onclick="fecharModal('modalAguardar')">Cancelar</button>
   </div>
 </div>
@@ -227,9 +275,19 @@ input {
   </div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
 const API = "https://truthful-acceptance-production-fb55.up.railway.app";
 let rotaAtual = null;
+
+let mapa = null;
+let camadaHub = null;
+let camadaRaio = null;
+let camadaMotorista = null;
+let camadaPrecisao = null;
+let ultimaLocalizacao = null;
+let ultimaConfigGalpao = null;
 
 function existeModalAberto() {
   return document.querySelector(".modal.show") !== null;
@@ -336,48 +394,179 @@ async function confirmarRota() {
   carregarRotas(true);
 }
 
-function abrirAguardarGalpao() {
+async function abrirAguardarGalpao() {
   waitingDriverId.value = "";
+  btnRegistrarPresenca.style.display = "none";
+  ultimaLocalizacao = null;
+
+  analiseLocalizacao.innerHTML = "Carregando configuração do galpão...";
   abrirModal("modalAguardar");
+
+  await carregarConfigGalpao();
+  setTimeout(inicializarMapa, 200);
 }
 
-function confirmarAguardarGalpao() {
+async function carregarConfigGalpao() {
+  const res = await fetch(API + "/hub-public-config.php");
+  const cfg = await res.json();
+
+  if (!cfg) {
+    analiseLocalizacao.innerHTML = `<span class="map-bad">Galpão ainda não configurado.</span>`;
+    return null;
+  }
+
+  ultimaConfigGalpao = {
+    hub_name: cfg.hub_name,
+    latitude: Number(cfg.latitude),
+    longitude: Number(cfg.longitude),
+    radius_meters: Number(cfg.radius_meters)
+  };
+
+  analiseLocalizacao.innerHTML =
+    `Galpão configurado: <strong>${ultimaConfigGalpao.hub_name}</strong>\n` +
+    `Raio permitido: <strong>${ultimaConfigGalpao.radius_meters}m</strong>\n` +
+    `Clique em "Analisar localização".`;
+
+  return ultimaConfigGalpao;
+}
+
+function inicializarMapa() {
+  if (!ultimaConfigGalpao) return;
+
+  if (!mapa) {
+    mapa = L.map("mapaGalpao");
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: ""
+    }).addTo(mapa);
+  }
+
+  mapa.invalidateSize();
+
+  const hub = [ultimaConfigGalpao.latitude, ultimaConfigGalpao.longitude];
+
+  if (camadaHub) mapa.removeLayer(camadaHub);
+  if (camadaRaio) mapa.removeLayer(camadaRaio);
+
+  camadaHub = L.marker(hub).addTo(mapa).bindPopup("Galpão");
+  camadaRaio = L.circle(hub, {
+    radius: ultimaConfigGalpao.radius_meters
+  }).addTo(mapa);
+
+  mapa.setView(hub, 16);
+}
+
+function distanciaMetros(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+function analisarLocalizacao() {
   const id = waitingDriverId.value.trim();
   if (!id) return;
+
+  if (!ultimaConfigGalpao) {
+    mostrarResultado("Galpão não configurado", "Configure o galpão no painel admin antes de registrar presença.");
+    return;
+  }
 
   if (!navigator.geolocation) {
     mostrarResultado("Localização indisponível", "Seu navegador não permite validar localização.");
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(async pos => {
-    const res = await fetch(API + "/waiting-register.php", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        driver_id: id,
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude
-      })
-    });
+  analiseLocalizacao.innerHTML = "Buscando localização precisa do celular...";
 
-    const data = await res.json();
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    const accuracy = pos.coords.accuracy || 0;
 
-    fecharModal("modalAguardar");
+    ultimaLocalizacao = {
+      driver_id: id,
+      latitude: lat,
+      longitude: lon,
+      accuracy
+    };
 
-    if (data.success) {
-      mostrarResultado("Presença registrada", data.message);
-    } else {
-      mostrarResultado("Não foi possível registrar", data.error || "Tente novamente.");
+    const distancia = distanciaMetros(
+      ultimaConfigGalpao.latitude,
+      ultimaConfigGalpao.longitude,
+      lat,
+      lon
+    );
+
+    const dentro = distancia <= ultimaConfigGalpao.radius_meters;
+
+    if (camadaMotorista) mapa.removeLayer(camadaMotorista);
+    if (camadaPrecisao) mapa.removeLayer(camadaPrecisao);
+
+    camadaMotorista = L.marker([lat, lon]).addTo(mapa).bindPopup("Você");
+    camadaPrecisao = L.circle([lat, lon], {
+      radius: accuracy
+    }).addTo(mapa);
+
+    const grupo = L.featureGroup([camadaHub, camadaRaio, camadaMotorista, camadaPrecisao]);
+    mapa.fitBounds(grupo.getBounds().pad(0.25));
+
+    let textoPrecisao = "";
+    if (accuracy > ultimaConfigGalpao.radius_meters) {
+      textoPrecisao = `\n<span class="map-warn">Atenção: o GPS está impreciso (${Math.round(accuracy)}m). Tente ativar localização precisa, sair de locais fechados ou tentar novamente.</span>`;
     }
+
+    analiseLocalizacao.innerHTML =
+      `<strong>Distância até o galpão:</strong> ${Math.round(distancia)}m\n` +
+      `<strong>Raio permitido:</strong> ${ultimaConfigGalpao.radius_meters}m\n` +
+      `<strong>Precisão informada pelo celular:</strong> ${Math.round(accuracy)}m\n` +
+      (dentro
+        ? `<span class="map-ok">Status: dentro do raio permitido.</span>`
+        : `<span class="map-bad">Status: fora do raio permitido.</span>`) +
+      textoPrecisao;
+
+    btnRegistrarPresenca.style.display = dentro ? "block" : "none";
+
   }, () => {
-    fecharModal("modalAguardar");
-    mostrarResultado("Localização não permitida", "Para registrar presença, é necessário permitir o acesso à localização.");
+    mostrarResultado("Localização não permitida", "Para registrar presença, é necessário permitir o acesso à localização precisa.");
   }, {
     enableHighAccuracy: true,
-    timeout: 15000,
+    timeout: 20000,
     maximumAge: 0
   });
+}
+
+async function registrarPresencaConfirmada() {
+  if (!ultimaLocalizacao) return;
+
+  const res = await fetch(API + "/waiting-register.php", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(ultimaLocalizacao)
+  });
+
+  const data = await res.json();
+
+  if (data.success) {
+    fecharModal("modalAguardar");
+    mostrarResultado(
+      "Presença registrada",
+      `${data.message}\nDistância: ${Math.round(Number(data.distance_meters || 0))}m\nRaio: ${data.radius_meters}m`
+    );
+  } else {
+    analiseLocalizacao.innerHTML =
+      `<span class="map-bad">${data.error || "Não foi possível registrar."}</span>\n` +
+      (data.distance_meters ? `Distância: ${Math.round(Number(data.distance_meters))}m\n` : "") +
+      (data.radius_meters ? `Raio permitido: ${data.radius_meters}m\n` : "") +
+      (data.accuracy_meters ? `Precisão do GPS: ${Math.round(Number(data.accuracy_meters))}m` : "");
+  }
 }
 
 carregarRotas(true);
