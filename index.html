@@ -4,69 +4,487 @@
 <meta charset="UTF-8">
 <title>Rotas Disponíveis</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-body{margin:0;font-family:Arial;background:#030712;color:white}
-header{text-align:center;padding:28px}
-.grid{max-width:1100px;margin:auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px}
-.card{background:#111827;border:1px solid #263044;border-radius:20px;padding:22px}
-button{width:100%;padding:14px;border:0;border-radius:14px;background:#ee4d2d;color:#fff;font-weight:bold}
-button:disabled{background:#1f2937;color:#6b7280}
-.tag{display:inline-block;border:1px solid #facc15;color:#facc15;border-radius:999px;padding:8px 12px;margin:4px}
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);align-items:center;justify-content:center;padding:18px}
-.modal.show{display:flex}
-.box{background:#111827;border:1px solid #374151;border-radius:22px;padding:24px;max-width:430px;width:100%}
-input{width:100%;padding:14px;border-radius:12px;border:1px solid #374151;background:#020617;color:#fff;margin:12px 0}
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: radial-gradient(circle at top, #172033 0%, #050816 45%, #02040d 100%);
+  color: white;
+  min-height: 100vh;
+}
+
+header {
+  text-align: center;
+  padding: 34px 18px 12px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 48px);
+  font-weight: 900;
+}
+
+header p {
+  margin: 10px 0 0;
+  color: #cbd5e1;
+}
+
+.grid {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 18px 50px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 22px;
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(30,41,59,.96), rgba(15,23,42,.96));
+  border: 1px solid rgba(148,163,184,.32);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 24px 50px rgba(0,0,0,.35);
+}
+
+.status {
+  position: absolute;
+  top: 20px;
+  right: -44px;
+  transform: rotate(10deg);
+  padding: 8px 62px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  border: 1px solid;
+}
+
+.status.disponivel {
+  color: #bbf7d0;
+  background: rgba(22,101,52,.72);
+  border-color: rgba(34,197,94,.75);
+}
+
+.status.indisponivel {
+  color: #fecaca;
+  background: rgba(127,29,29,.78);
+  border-color: rgba(248,113,113,.7);
+}
+
+.card h2 {
+  margin: 0 0 14px;
+  font-size: 25px;
+  font-weight: 900;
+  padding-right: 90px;
+}
+
+.card p {
+  font-size: 18px;
+  font-weight: 700;
+  color: #e5e7eb;
+  margin: 0 0 18px;
+}
+
+.tags {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+
+.tag {
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid #facc15;
+  color: #facc15;
+  background: rgba(250,204,21,.08);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+button {
+  width: 100%;
+  border: 0;
+  border-radius: 16px;
+  padding: 15px 18px;
+  font-size: 15px;
+  font-weight: 900;
+  color: white;
+  background: linear-gradient(90deg, #ee4d2d, #ff7a45);
+  cursor: pointer;
+  box-shadow: 0 12px 26px rgba(238,77,45,.25);
+}
+
+button:hover { filter: brightness(1.08); }
+
+button:disabled {
+  background: #111827;
+  color: #64748b;
+  cursor: not-allowed;
+  box-shadow: none;
+  border: 1px solid #1f2937;
+}
+
+.btn-secondary {
+  background: #334155;
+  box-shadow: none;
+  margin-top: 10px;
+}
+
+.empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #cbd5e1;
+  margin-top: 45px;
+  font-size: 18px;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0,0,0,.78);
+  backdrop-filter: blur(5px);
+  z-index: 20;
+}
+
+.modal.show { display: flex; }
+
+.modal-box {
+  width: 100%;
+  max-width: 500px;
+  background: linear-gradient(145deg, #111827, #070b17);
+  border: 1px solid rgba(148,163,184,.28);
+  border-radius: 28px;
+  padding: 28px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.65);
+}
+
+.modal-icon {
+  width: 66px;
+  height: 66px;
+  margin: 0 auto 16px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 32px;
+  font-weight: 900;
+}
+
+.icon-info {
+  background: rgba(238,77,45,.16);
+  color: #ffb199;
+  border: 1px solid rgba(238,77,45,.35);
+}
+
+.icon-success {
+  background: rgba(34,197,94,.16);
+  color: #86efac;
+  border: 1px solid rgba(34,197,94,.45);
+}
+
+.icon-error {
+  background: rgba(248,113,113,.14);
+  color: #fca5a5;
+  border: 1px solid rgba(248,113,113,.35);
+}
+
+.modal-box h2 {
+  margin: 0 0 10px;
+  text-align: center;
+  font-size: clamp(26px, 5vw, 38px);
+  font-weight: 900;
+  color: #ffb199;
+}
+
+.modal-box.success h2 {
+  color: #86efac;
+  text-transform: uppercase;
+}
+
+.modal-box.error h2 { color: #fca5a5; }
+
+.modal-box p {
+  color: #e5e7eb;
+  text-align: center;
+  line-height: 1.55;
+  font-size: 17px;
+  white-space: pre-line;
+}
+
+.route-preview {
+  margin: 18px 0;
+  padding: 16px;
+  background: #020617;
+  border: 1px solid #263044;
+  border-radius: 18px;
+}
+
+.route-preview strong {
+  display: block;
+  color: white;
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.route-preview span { color: #cbd5e1; }
+
+input {
+  width: 100%;
+  padding: 16px;
+  margin: 12px 0;
+  border-radius: 16px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: white;
+  outline: none;
+  font-size: 17px;
+}
+
+input:focus {
+  border-color: #ee4d2d;
+  box-shadow: 0 0 0 3px rgba(238,77,45,.18);
+}
+
+.actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.success-text {
+  font-size: clamp(21px, 4vw, 30px) !important;
+  font-weight: 900;
+  color: white !important;
+}
+
+.success-route {
+  display: block;
+  margin-top: 14px;
+  color: #86efac;
+  font-size: clamp(26px, 5vw, 42px);
+  font-weight: 900;
+}
+
+@media (max-width: 520px) {
+  .modal-box { padding: 22px; }
+  .card { padding: 20px; }
+}
 </style>
 </head>
+
 <body>
-<header><h1>Rotas Disponíveis</h1></header>
+<header>
+  <h1>Rotas Disponíveis</h1>
+  <p>Escolha uma rota disponível e confirme com seu ID.</p>
+</header>
+
 <main id="rotas" class="grid"></main>
 
-<div id="modal" class="modal">
-  <div class="box">
+<div id="modalConfirmar" class="modal">
+  <div class="modal-box">
+    <div class="modal-icon icon-info">🚚</div>
     <h2>Confirmar rota</h2>
-    <p id="info"></p>
-    <input id="driverId" placeholder="Digite seu ID">
-    <button onclick="confirmarRota()">Confirmar e pegar rota</button>
-    <button onclick="fechar()">Cancelar</button>
+    <p>Confira os dados abaixo e informe seu ID para pegar a rota.</p>
+
+    <div class="route-preview">
+      <strong id="previewRota"></strong>
+      <span id="previewRegiao"></span>
+    </div>
+
+    <input id="driverId" placeholder="Digite seu ID" inputmode="numeric">
+
+    <div class="actions">
+      <button onclick="confirmarRota()">Confirmar e pegar rota</button>
+      <button class="btn-secondary" onclick="fecharModal('modalConfirmar')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalResultado" class="modal">
+  <div class="modal-box" id="resultadoBox">
+    <div class="modal-icon" id="resultadoIcone">✓</div>
+    <h2 id="resultadoTitulo"></h2>
+    <p id="resultadoTexto"></p>
+    <div class="actions">
+      <button onclick="fecharModal('modalResultado')">Entendi</button>
+    </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 const API = "https://routetransfervg2-production.up.railway.app";
+
 const SUPABASE_URL = "https://yewfqmgmphswqvpuhfin.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlld2ZxbWdtcGhzd3F2cHVoZmluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNjAzNDcsImV4cCI6MjA5MzYzNjM0N30.DJcUn4nU-yDtCZatK8e8XhDwi2e4qa3oEdyPOdYi4xs";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let rotaAtual=null;
 
-async function carregarRotas(){
-  const res = await fetch(API + "/routes.php?t=" + Date.now(), {cache:"no-store"});
-  const data = await res.json();
-  rotas.innerHTML = data.length ? "" : "<p>Nenhuma rota disponível.</p>";
-  data.forEach(r=>{
-    const v = String(r.allowed_vehicles).replace("{","").replace("}","").split(",");
-    const disp = r.status === "disponivel";
-    const div = document.createElement("div");
-    div.className = "card";
-    div.innerHTML = `<h2>ROTA: ${r.route_name}</h2><p>Região: ${r.region}</p>
-      <div>${v.map(x=>`<span class='tag'>${x}</span>`).join("")}</div>
-      ${disp ? `<button onclick='abrir(${JSON.stringify(r)})'>Pegar rota</button>` : `<button disabled>Indisponível</button>`}`;
-    rotas.appendChild(div);
-  });
+let rotaAtual = null;
+
+function abrirModal(id) {
+  document.getElementById(id).classList.add("show");
 }
-function abrir(r){rotaAtual=r; info.innerText=`Rota: ${r.route_name}\nRegião: ${r.region}`; driverId.value=""; modal.classList.add("show")}
-function fechar(){modal.classList.remove("show")}
-async function confirmarRota(){
-  const id=driverId.value.trim(); if(!id)return;
-  const res=await fetch(API+"/claim-route.php",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({driver_id:id,route_id:rotaAtual.id})});
-  const data=await res.json();
-  fechar();
-  alert(data.success ? "ROTA CONFIRMADA: " + data.route.route_name : "Operação não autorizada.");
-  carregarRotas();
+
+function fecharModal(id) {
+  document.getElementById(id).classList.remove("show");
 }
-sb.channel("routes-realtime").on("postgres_changes",{event:"*",schema:"public",table:"routes"},()=>carregarRotas()).subscribe();
+
+function mostrarResultado(tipo, titulo, texto) {
+  const box = document.getElementById("resultadoBox");
+  const icone = document.getElementById("resultadoIcone");
+
+  box.classList.remove("success", "error");
+  icone.classList.remove("icon-success", "icon-error", "icon-info");
+
+  if (tipo === "success") {
+    box.classList.add("success");
+    icone.classList.add("icon-success");
+    icone.innerText = "✓";
+  } else {
+    box.classList.add("error");
+    icone.classList.add("icon-error");
+    icone.innerText = "!";
+  }
+
+  resultadoTitulo.innerText = titulo;
+  resultadoTexto.innerHTML = texto;
+  abrirModal("modalResultado");
+}
+
+function normalizarVeiculos(value) {
+  if (Array.isArray(value)) return value;
+  return String(value || "")
+    .replace("{", "")
+    .replace("}", "")
+    .replace(/"/g, "")
+    .split(",")
+    .map(v => v.trim())
+    .filter(Boolean);
+}
+
+async function carregarRotas() {
+  try {
+    const res = await fetch(API + "/routes.php?t=" + Date.now(), { cache: "no-store" });
+    const data = await res.json();
+
+    rotas.innerHTML = "";
+
+    if (!data.length) {
+      rotas.innerHTML = `<div class="empty">Nenhuma rota disponível.</div>`;
+      return;
+    }
+
+    data.forEach(r => {
+      const veiculos = normalizarVeiculos(r.allowed_vehicles);
+      const disponivel = r.status === "disponivel";
+
+      const card = document.createElement("div");
+      card.className = "card";
+
+      card.innerHTML = `
+        <div class="status ${disponivel ? "disponivel" : "indisponivel"}">
+          ${disponivel ? "DISPONÍVEL" : "INDISPONÍVEL"}
+        </div>
+
+        <h2>ROTA: ${r.route_name}</h2>
+        <p>Região: ${r.region}</p>
+
+        <div class="tags">
+          ${veiculos.map(v => `<span class="tag">${v}</span>`).join("")}
+        </div>
+
+        ${
+          disponivel
+          ? `<button onclick='abrirConfirmacao(${JSON.stringify(r)})'>Pegar rota</button>`
+          : `<button disabled>Indisponível</button>`
+        }
+      `;
+
+      rotas.appendChild(card);
+    });
+  } catch (err) {
+    rotas.innerHTML = `<div class="empty">Erro ao carregar rotas.</div>`;
+  }
+}
+
+function abrirConfirmacao(rota) {
+  rotaAtual = rota;
+  previewRota.innerText = "Rota: " + rota.route_name;
+  previewRegiao.innerText = "Região: " + rota.region;
+  driverId.value = "";
+  abrirModal("modalConfirmar");
+  setTimeout(() => driverId.focus(), 150);
+}
+
+async function confirmarRota() {
+  const id = driverId.value.trim();
+
+  if (!id) {
+    mostrarResultado("error", "ID obrigatório", "Informe seu ID para continuar.");
+    return;
+  }
+
+  try {
+    const res = await fetch(API + "/claim-route.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        driver_id: id,
+        route_id: rotaAtual.id
+      })
+    });
+
+    const data = await res.json();
+    fecharModal("modalConfirmar");
+
+    if (data.success) {
+      mostrarResultado(
+        "success",
+        "Rota confirmada",
+        `<span class="success-text">Você pegou a rota com sucesso.</span>
+         <span class="success-route">${data.route.route_name}</span>
+         <br>Boa viagem 🚚`
+      );
+    } else {
+      mostrarResultado(
+        "error",
+        "Não foi possível pegar a rota",
+        "Operação não autorizada."
+      );
+    }
+
+    carregarRotas();
+
+  } catch (err) {
+    fecharModal("modalConfirmar");
+    mostrarResultado(
+      "error",
+      "Erro de conexão",
+      "Não foi possível concluir a operação agora."
+    );
+  }
+}
+
+function iniciarRealtime() {
+  sb.channel("routes-realtime")
+    .on("postgres_changes", { event: "*", schema: "public", table: "routes" }, () => {
+      carregarRotas();
+    })
+    .subscribe();
+}
+
 carregarRotas();
+iniciarRealtime();
+setInterval(carregarRotas, 10000);
 </script>
 </body>
 </html>
