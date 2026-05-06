@@ -1,23 +1,10 @@
 <?php
 header("Content-Type: application/json; charset=utf-8");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
-    exit;
-}
-
-require_once "auth.php";
-require_admin();
-
-require_once "db.php";
+header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") exit;
+require_once "auth.php"; require_admin(); require_once "db.php";
 $conn = getConnection();
-
-$stmt = $conn->query("
-    SELECT *
-    FROM driver_waiting_hub
-    WHERE waiting_date = CURRENT_DATE
-    AND status = 'aguardando'
-    ORDER BY created_at DESC
-");
-
-echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+$stmt = $conn->query("SELECT * FROM driver_waiting_hub WHERE waiting_date=CURRENT_DATE AND status='aguardando' ORDER BY created_at DESC");
+echo json_encode($stmt->fetchAll());
+?>

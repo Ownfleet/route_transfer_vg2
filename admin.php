@@ -516,9 +516,13 @@ input:focus, select:focus { border-color: #ee4d2d; }
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
 const API = "";
+const SUPABASE_URL = "https://yewfqmgmphswqvpuhfin.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlld2ZxbWdtcGhzd3F2cHVoZmluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNjAzNDcsImV4cCI6MjA5MzYzNjM0N30.DJcUn4nU-yDtCZatK8e8XhDwi2e4qa3oEdyPOdYi4xs";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
 let motoristaAtual = null;
@@ -1080,6 +1084,7 @@ async function verificarNovosRepasses() {
 
 async function iniciarMonitoramento() {
   await atualizarBaseRotas(true);
+  iniciarRealtimeAdmin();
 }
 
 
@@ -1150,6 +1155,19 @@ async function carregarAguardandoGalpao() {
   `).join("") : `<div class="notice">Nenhum motorista aguardando no galpão hoje.</div>`;
 }
 
+
+function iniciarRealtimeAdmin() {
+  sb.channel("admin-realtime")
+    .on("postgres_changes", { event: "*", schema: "public", table: "routes" }, () => {
+      verificarNovosRepasses();
+      if (document.getElementById("modalGerenciarRotas").classList.contains("show")) carregarRotasAdmin(true);
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "driver_waiting_hub" }, () => {
+      if (document.getElementById("modalAguardandoGalpao").classList.contains("show")) carregarAguardandoGalpao();
+    })
+    .subscribe();
+}
+
 loginSenha.addEventListener("keydown", e => {
   if (e.key === "Enter") validarLogin();
 });
@@ -1160,7 +1178,7 @@ consultaDriverId.addEventListener("keydown", e => {
 
 tentarLoginSalvo();
 
-setInterval(verificarNovosRepasses, 15000);
+setInterval(verificarNovosRepasses, 3000);
 </script>
 
 </body>

@@ -1,34 +1,27 @@
 <?php
-
 function getConnection() {
     $databaseUrl = getenv("DATABASE_URL");
 
-    if (!$databaseUrl) {
-        http_response_code(500);
-        echo json_encode(["error" => "DATABASE_URL não configurada"]);
-        exit;
+    if ($databaseUrl) {
+        $parts = parse_url($databaseUrl);
+        $host = $parts["host"] ?? "";
+        $port = $parts["port"] ?? 5432;
+        $user = $parts["user"] ?? "";
+        $pass = $parts["pass"] ?? "";
+        $db = ltrim($parts["path"] ?? "", "/");
+    } else {
+        $host = getenv("PGHOST") ?: "COLOQUE_HOST_DO_SUPABASE";
+        $port = getenv("PGPORT") ?: "5432";
+        $db = getenv("PGDATABASE") ?: "postgres";
+        $user = getenv("PGUSER") ?: "COLOQUE_USER_DO_SUPABASE";
+        $pass = getenv("PGPASSWORD") ?: "COLOQUE_SENHA_DO_BANCO";
     }
 
-    $url = parse_url($databaseUrl);
+    $dsn = "pgsql:host={$host};port={$port};dbname={$db};sslmode=require";
 
-    $host = $url["host"];
-    $port = $url["port"] ?? 5432;
-    $user = $url["user"];
-    $pass = $url["pass"];
-    $dbname = ltrim($url["path"], "/");
-
-    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
-
-    try {
-        return new PDO($dsn, $user, $pass, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-        ]);
-    } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode([
-    "error" => "Erro ao conectar no banco",
-    "details" => $e->getMessage()
-]);
-        exit;
-    }
+    return new PDO($dsn, $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
 }
+?>
