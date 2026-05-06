@@ -1,25 +1,13 @@
 <?php
 function getConnection() {
-    $databaseUrl = getenv("DATABASE_URL");
+    $host = getenv("PGHOST");
+    $port = getenv("PGPORT") ?: "5432";
+    $db   = getenv("PGDATABASE") ?: "postgres";
+    $user = getenv("PGUSER");
+    $pass = getenv("PGPASSWORD");
 
-    if (!$databaseUrl) {
-        throw new Exception("DATABASE_URL não encontrada no Railway.");
-    }
-
-    $parts = parse_url($databaseUrl);
-
-    if (!$parts) {
-        throw new Exception("DATABASE_URL inválida.");
-    }
-
-    $host = $parts["host"] ?? "";
-    $port = $parts["port"] ?? 5432;
-    $user = rawurldecode($parts["user"] ?? "");
-    $pass = rawurldecode($parts["pass"] ?? "");
-    $db   = ltrim($parts["path"] ?? "", "/");
-
-    if (!$host || !$user || !$pass || !$db) {
-        throw new Exception("DATABASE_URL incompleta.");
+    if (!$host || !$user || !$pass) {
+        throw new Exception("Variáveis PGHOST, PGUSER ou PGPASSWORD não configuradas.");
     }
 
     $dsn = "pgsql:host={$host};port={$port};dbname={$db};sslmode=require";
