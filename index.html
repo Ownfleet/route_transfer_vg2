@@ -5,6 +5,8 @@
 <title>Rotas Disponíveis</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
 <style>
 * { box-sizing: border-box; }
 
@@ -18,7 +20,7 @@ body {
 
 header {
   text-align: center;
-  padding: 34px 18px 12px;
+  padding: 30px 18px 14px;
 }
 
 header h1 {
@@ -30,6 +32,28 @@ header h1 {
 header p {
   margin: 10px 0 0;
   color: #cbd5e1;
+}
+
+.top-actions {
+  max-width: 720px;
+  margin: 18px auto 0;
+  padding: 0 18px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wait-btn {
+  max-width: 360px;
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+  box-shadow: 0 14px 30px rgba(34,197,94,.22);
+}
+
+.info-btn {
+  width: auto;
+  background: #334155;
+  box-shadow: none;
 }
 
 .grid {
@@ -70,9 +94,9 @@ header p {
 }
 
 .status.indisponivel {
-  color: #fecaca;
-  background: rgba(127,29,29,.78);
-  border-color: rgba(248,113,113,.7);
+  color: #fde68a;
+  background: rgba(113,63,18,.78);
+  border-color: rgba(250,204,21,.7);
 }
 
 .card h2 {
@@ -158,13 +182,32 @@ button:disabled {
 .modal.show { display: flex; }
 
 .modal-box {
+  position: relative;
   width: 100%;
-  max-width: 500px;
+  max-width: 520px;
+  max-height: 92vh;
+  overflow-y: auto;
   background: linear-gradient(145deg, #111827, #070b17);
   border: 1px solid rgba(148,163,184,.28);
   border-radius: 28px;
   padding: 28px;
   box-shadow: 0 30px 80px rgba(0,0,0,.65);
+}
+
+.modal-box.large { max-width: 760px; }
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #1f2937;
+  color: #fff;
+  box-shadow: none;
+  padding: 0;
+  font-size: 20px;
 }
 
 .modal-icon {
@@ -197,11 +240,16 @@ button:disabled {
 }
 
 .modal-box h2 {
-  margin: 0 0 10px;
-  text-align: center;
+  margin: 0 44px 10px 0;
+  text-align: left;
   font-size: clamp(26px, 5vw, 38px);
   font-weight: 900;
   color: #ffb199;
+}
+
+.modal-box.center h2 {
+  text-align: center;
+  margin-right: 0;
 }
 
 .modal-box.success h2 {
@@ -213,13 +261,12 @@ button:disabled {
 
 .modal-box p {
   color: #e5e7eb;
-  text-align: center;
   line-height: 1.55;
   font-size: 17px;
   white-space: pre-line;
 }
 
-.route-preview {
+.route-preview, .map-info, .notice {
   margin: 18px 0;
   padding: 16px;
   background: #020617;
@@ -273,6 +320,31 @@ input:focus {
   font-weight: 900;
 }
 
+#mapaGalpao {
+  width: 100%;
+  height: 330px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid #334155;
+  margin: 16px 0;
+}
+
+.map-ok { color: #86efac; font-weight: 900; }
+.map-bad { color: #fca5a5; font-weight: 900; }
+.map-warn { color: #fde68a; font-weight: 900; }
+
+.loading-spinner {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 5px solid rgba(255,255,255,.14);
+  border-top-color: #ee4d2d;
+  margin: 0 auto 18px;
+  animation: spin .8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
 @media (max-width: 520px) {
   .modal-box { padding: 22px; }
   .card { padding: 20px; }
@@ -284,12 +356,35 @@ input:focus {
 <header>
   <h1>Rotas Disponíveis</h1>
   <p>Escolha uma rota disponível e confirme com seu ID.</p>
+
+  <div class="top-actions">
+    <button class="wait-btn" onclick="abrirAguardarGalpao()">Aguardar rota no galpão</button>
+    <button class="info-btn" onclick="abrirModal('modalInfoGalpao')">Como funciona?</button>
+  </div>
 </header>
 
 <main id="rotas" class="grid"></main>
 
+<div id="modalInfoGalpao" class="modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="fecharModal('modalInfoGalpao')">×</button>
+    <h2>Como funciona?</h2>
+    <p>
+O botão “Aguardar rota no galpão” serve para o motorista confirmar que está próximo ao galpão e disponível para uma possível rota.
+
+Ao clicar, o sistema irá pedir sua localização e verificar se você está dentro do raio permitido. Se estiver dentro do raio, o botão de confirmação será liberado.
+
+Mesmo registrando sua presença pelo sistema, também é importante avisar os analistas que você está próximo ao galpão aguardando uma rota, para que todos tenham ciência da sua disponibilidade.
+    </p>
+    <div class="actions">
+      <button onclick="fecharModal('modalInfoGalpao')">Entendi</button>
+    </div>
+  </div>
+</div>
+
 <div id="modalConfirmar" class="modal">
   <div class="modal-box">
+    <button class="modal-close" onclick="fecharModal('modalConfirmar')">×</button>
     <div class="modal-icon icon-info">🚚</div>
     <h2>Confirmar rota</h2>
     <p>Confira os dados abaixo e informe seu ID para pegar a rota.</p>
@@ -308,8 +403,31 @@ input:focus {
   </div>
 </div>
 
+<div id="modalAguardarGalpao" class="modal">
+  <div class="modal-box large">
+    <button class="modal-close" onclick="fecharModal('modalAguardarGalpao')">×</button>
+    <h2>Aguardar rota no galpão</h2>
+    <p>Digite seu ID, permita a localização do celular e aguarde a análise do raio permitido.</p>
+
+    <input id="waitingDriverId" placeholder="Digite seu ID" inputmode="numeric">
+
+    <div id="mapaGalpao"></div>
+
+    <div id="analiseLocalizacao" class="map-info">
+      O mapa será carregado após analisar sua localização.
+    </div>
+
+    <div class="actions">
+      <button onclick="analisarLocalizacao()">Analisar localização</button>
+      <button id="btnRegistrarPresenca" style="display:none; background:linear-gradient(90deg,#16a34a,#22c55e);" onclick="registrarPresencaConfirmada()">Confirmar presença no galpão</button>
+      <button class="btn-secondary" onclick="fecharModal('modalAguardarGalpao')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div id="modalResultado" class="modal">
-  <div class="modal-box" id="resultadoBox">
+  <div class="modal-box center" id="resultadoBox">
+    <button class="modal-close" onclick="fecharModal('modalResultado')">×</button>
     <div class="modal-icon" id="resultadoIcone">✓</div>
     <h2 id="resultadoTitulo"></h2>
     <p id="resultadoTexto"></p>
@@ -319,16 +437,32 @@ input:focus {
   </div>
 </div>
 
+<div id="modalLoading" class="modal">
+  <div class="modal-box center">
+    <div class="loading-spinner"></div>
+    <h2 id="loadingTitulo">Processando...</h2>
+    <p id="loadingTexto">Aguarde enquanto o sistema conclui a operação.</p>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
 const API = "https://routetransfervg2-production.up.railway.app";
 
 const SUPABASE_URL = "https://yewfqmgmphswqvpuhfin.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlld2ZxbWdtcGhzd3F2cHVoZmluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNjAzNDcsImV4cCI6MjA5MzYzNjM0N30.DJcUn4nU-yDtCZatK8e8XhDwi2e4qa3oEdyPOdYi4xs";
+const SUPABASE_ANON_KEY = "SUA_ANON_KEY_AQUI";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let rotaAtual = null;
+let mapa = null;
+let camadaHub = null;
+let camadaRaio = null;
+let camadaMotorista = null;
+let camadaPrecisao = null;
+let ultimaConfigGalpao = null;
+let ultimaLocalizacao = null;
 
 function abrirModal(id) {
   document.getElementById(id).classList.add("show");
@@ -336,6 +470,16 @@ function abrirModal(id) {
 
 function fecharModal(id) {
   document.getElementById(id).classList.remove("show");
+}
+
+function mostrarLoading(titulo = "Processando...", texto = "Aguarde enquanto o sistema conclui a operação.") {
+  loadingTitulo.innerText = titulo;
+  loadingTexto.innerText = texto;
+  abrirModal("modalLoading");
+}
+
+function esconderLoading() {
+  fecharModal("modalLoading");
 }
 
 function mostrarResultado(tipo, titulo, texto) {
@@ -392,14 +536,14 @@ async function carregarRotas() {
 
       card.innerHTML = `
         <div class="status ${disponivel ? "disponivel" : "indisponivel"}">
-          ${disponivel ? "DISPONÍVEL" : "INDISPONÍVEL"}
+          ${disponivel ? "DISPONÍVEL" : "ROTA REPASSADA"}
         </div>
 
         <h2>ROTA: ${r.route_name}</h2>
         <p>Região: ${r.region}</p>
 
         <div class="tags">
-          ${veiculos.map(v => `<span class="tag">${v}</span>`).join("")}
+          ${veiculos.map(v => `<span class="tag">● ${v}</span>`).join("")}
         </div>
 
         ${
@@ -433,17 +577,17 @@ async function confirmarRota() {
     return;
   }
 
+  mostrarLoading("Confirmando rota...", "Aguarde enquanto validamos sua solicitação.");
+
   try {
     const res = await fetch(API + "/claim-route.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        driver_id: id,
-        route_id: rotaAtual.id
-      })
+      body: JSON.stringify({ driver_id: id, route_id: rotaAtual.id })
     });
 
     const data = await res.json();
+    esconderLoading();
     fecharModal("modalConfirmar");
 
     if (data.success) {
@@ -459,30 +603,219 @@ async function confirmarRota() {
         ? "Infelizmente alguém preencheu primeiro. Tente outra rota disponível."
         : "Operação não autorizada.";
 
-      mostrarResultado(
-        "error",
-        "Não foi possível pegar a rota",
-        mensagem
-      );
+      mostrarResultado("error", "Não foi possível pegar a rota", mensagem);
     }
 
     carregarRotas();
 
   } catch (err) {
+    esconderLoading();
     fecharModal("modalConfirmar");
-    mostrarResultado(
-      "error",
-      "Erro de conexão",
-      "Não foi possível concluir a operação agora."
+    mostrarResultado("error", "Erro de conexão", "Não foi possível concluir a operação agora.");
+  }
+}
+
+async function abrirAguardarGalpao() {
+  waitingDriverId.value = "";
+  btnRegistrarPresenca.style.display = "none";
+  ultimaLocalizacao = null;
+  analiseLocalizacao.innerHTML = "Carregando configuração do galpão...";
+  abrirModal("modalAguardarGalpao");
+
+  await carregarConfigGalpao();
+  setTimeout(inicializarMapa, 250);
+}
+
+async function carregarConfigGalpao() {
+  try {
+    const res = await fetch(API + "/hub-public-config.php?t=" + Date.now(), { cache: "no-store" });
+    const cfg = await res.json();
+
+    if (!cfg) {
+      analiseLocalizacao.innerHTML = `<span class="map-bad">Galpão ainda não configurado pelo admin.</span>`;
+      return null;
+    }
+
+    ultimaConfigGalpao = {
+      hub_name: cfg.hub_name || "Galpão",
+      latitude: Number(cfg.latitude),
+      longitude: Number(cfg.longitude),
+      radius_meters: Number(cfg.radius_meters)
+    };
+
+    analiseLocalizacao.innerHTML =
+      `<strong>${ultimaConfigGalpao.hub_name}</strong><br>
+       Raio permitido: <strong>${ultimaConfigGalpao.radius_meters}m</strong><br>
+       Clique em “Analisar localização” para verificar se você está dentro do raio.`;
+
+    return ultimaConfigGalpao;
+
+  } catch (err) {
+    analiseLocalizacao.innerHTML = `<span class="map-bad">Erro ao carregar configuração do galpão.</span>`;
+    return null;
+  }
+}
+
+function inicializarMapa() {
+  if (!ultimaConfigGalpao) return;
+
+  if (!mapa) {
+    mapa = L.map("mapaGalpao");
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "Leaflet"
+    }).addTo(mapa);
+  }
+
+  mapa.invalidateSize();
+
+  const hub = [ultimaConfigGalpao.latitude, ultimaConfigGalpao.longitude];
+
+  if (camadaHub) mapa.removeLayer(camadaHub);
+  if (camadaRaio) mapa.removeLayer(camadaRaio);
+  if (camadaMotorista) mapa.removeLayer(camadaMotorista);
+  if (camadaPrecisao) mapa.removeLayer(camadaPrecisao);
+
+  camadaHub = L.marker(hub).addTo(mapa).bindPopup(ultimaConfigGalpao.hub_name);
+  camadaRaio = L.circle(hub, {
+    radius: ultimaConfigGalpao.radius_meters
+  }).addTo(mapa);
+
+  mapa.setView(hub, 16);
+}
+
+function distanciaMetros(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+function analisarLocalizacao() {
+  const id = waitingDriverId.value.trim();
+
+  if (!id) {
+    mostrarResultado("error", "ID obrigatório", "Informe seu ID antes de analisar a localização.");
+    return;
+  }
+
+  if (!ultimaConfigGalpao) {
+    mostrarResultado("error", "Galpão não configurado", "A configuração do galpão ainda não foi carregada.");
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    mostrarResultado("error", "Localização indisponível", "Seu navegador não permite validar localização.");
+    return;
+  }
+
+  mostrarLoading("Analisando localização...", "Aguarde enquanto o GPS confirma sua posição.");
+  analiseLocalizacao.innerHTML = "Buscando localização precisa do celular...";
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    esconderLoading();
+
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    const accuracy = pos.coords.accuracy || 0;
+
+    ultimaLocalizacao = {
+      driver_id: id,
+      latitude: lat,
+      longitude: lon,
+      accuracy
+    };
+
+    const distancia = distanciaMetros(
+      ultimaConfigGalpao.latitude,
+      ultimaConfigGalpao.longitude,
+      lat,
+      lon
     );
+
+    const dentro = distancia <= ultimaConfigGalpao.radius_meters;
+
+    if (camadaMotorista) mapa.removeLayer(camadaMotorista);
+    if (camadaPrecisao) mapa.removeLayer(camadaPrecisao);
+
+    camadaMotorista = L.marker([lat, lon]).addTo(mapa).bindPopup("Você");
+    camadaPrecisao = L.circle([lat, lon], { radius: accuracy }).addTo(mapa);
+
+    const grupo = L.featureGroup([camadaHub, camadaRaio, camadaMotorista, camadaPrecisao]);
+    mapa.fitBounds(grupo.getBounds().pad(0.25));
+
+    let textoPrecisao = "";
+    if (accuracy > ultimaConfigGalpao.radius_meters) {
+      textoPrecisao = `<br><span class="map-warn">Atenção: o GPS está impreciso (${Math.round(accuracy)}m). Tente ficar em local aberto se necessário.</span>`;
+    }
+
+    analiseLocalizacao.innerHTML =
+      `<strong>Distância até o galpão:</strong> ${Math.round(distancia)}m<br>
+       <strong>Raio permitido:</strong> ${ultimaConfigGalpao.radius_meters}m<br>
+       <strong>Precisão informada pelo celular:</strong> ${Math.round(accuracy)}m<br>
+       ${
+         dentro
+         ? `<span class="map-ok">Status: dentro do raio permitido.</span>`
+         : `<span class="map-bad">Status: fora do raio permitido.</span>`
+       }
+       ${textoPrecisao}`;
+
+    btnRegistrarPresenca.style.display = dentro ? "block" : "none";
+
+  }, () => {
+    esconderLoading();
+    analiseLocalizacao.innerHTML = `<span class="map-bad">Não foi possível acessar sua localização.</span>`;
+    mostrarResultado("error", "Localização não permitida", "Para registrar presença, é necessário permitir o acesso à localização precisa.");
+  }, {
+    enableHighAccuracy: true,
+    timeout: 20000,
+    maximumAge: 0
+  });
+}
+
+async function registrarPresencaConfirmada() {
+  if (!ultimaLocalizacao) return;
+
+  mostrarLoading("Registrando presença...", "Aguarde enquanto confirmamos sua presença no galpão.");
+
+  try {
+    const res = await fetch(API + "/waiting-register.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(ultimaLocalizacao)
+    });
+
+    const data = await res.json();
+    esconderLoading();
+
+    if (data.success) {
+      fecharModal("modalAguardarGalpao");
+      mostrarResultado(
+        "success",
+        "Presença registrada",
+        `${data.message}<br><br>
+         Distância: ${Math.round(Number(data.distance_meters || 0))}m<br>
+         Raio permitido: ${data.radius_meters}m`
+      );
+    } else {
+      analiseLocalizacao.innerHTML = `<span class="map-bad">${data.error || "Não foi possível registrar sua presença."}</span>`;
+      mostrarResultado("error", "Não foi possível registrar", data.error || "Verifique seu ID e tente novamente.");
+    }
+  } catch (err) {
+    esconderLoading();
+    mostrarResultado("error", "Erro de conexão", "Não foi possível registrar sua presença agora.");
   }
 }
 
 function iniciarRealtime() {
   sb.channel("routes-realtime")
-    .on("postgres_changes", { event: "*", schema: "public", table: "routes" }, () => {
-      carregarRotas();
-    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "routes" }, () => carregarRotas())
     .subscribe();
 }
 
