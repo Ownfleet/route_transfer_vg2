@@ -1,20 +1,22 @@
 <?php
 header("Content-Type: text/plain; charset=utf-8");
 
-require_once "db.php";
+$url = getenv("DATABASE_URL");
 
-try {
-    $conn = getConnection();
+echo "DATABASE_URL LIDA PELO PHP:\n";
 
-    echo "CONECTOU COM BANCO\n\n";
-
-    $stmt = $conn->query("SELECT COUNT(*) AS total FROM routes");
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    echo "Total de rotas: " . $row["total"];
-
-} catch (Exception $e) {
-    http_response_code(500);
-    echo "ERRO AO CONECTAR:\n";
-    echo $e->getMessage();
+if (!$url) {
+    echo "NÃO ENCONTROU DATABASE_URL";
+    exit;
 }
+
+$masked = preg_replace('/:(.*?)@/', ':SENHA_OCULTA@', $url);
+echo $masked . "\n\n";
+
+$parts = parse_url($url);
+
+echo "USUARIO IDENTIFICADO:\n";
+echo $parts["user"] ?? "SEM USER";
+
+echo "\n\nHOST:\n";
+echo $parts["host"] ?? "SEM HOST";
