@@ -99,6 +99,19 @@ header p {
   border-color: rgba(250,204,21,.7);
 }
 
+.status.sua-rota {
+  color: #dbeafe;
+  background: linear-gradient(90deg, #1d4ed8, #38bdf8);
+  border-color: #7dd3fc;
+  box-shadow: 0 0 18px rgba(56,189,248,.9);
+  animation: brilhoSuaRota 1.2s infinite alternate;
+}
+
+@keyframes brilhoSuaRota {
+  from { box-shadow: 0 0 10px rgba(56,189,248,.45); }
+  to { box-shadow: 0 0 26px rgba(56,189,248,1); }
+}
+
 .card h2 {
   margin: 0 0 14px;
   font-size: 25px;
@@ -515,6 +528,20 @@ function normalizarVeiculos(value) {
     .filter(Boolean);
 }
 
+function pegarMinhasRotas() {
+  return JSON.parse(localStorage.getItem("minhasRotasPegas") || "[]");
+}
+
+function salvarMinhaRota(routeId) {
+  const minhasRotas = pegarMinhasRotas();
+  const id = String(routeId);
+
+  if (!minhasRotas.includes(id)) {
+    minhasRotas.push(id);
+    localStorage.setItem("minhasRotasPegas", JSON.stringify(minhasRotas));
+  }
+}
+
 async function carregarRotas() {
   try {
     const res = await fetch(API + "/routes.php?t=" + Date.now(), { cache: "no-store" });
@@ -527,16 +554,19 @@ async function carregarRotas() {
       return;
     }
 
+    const minhasRotas = pegarMinhasRotas();
+
     data.forEach(r => {
       const veiculos = normalizarVeiculos(r.allowed_vehicles);
       const disponivel = r.status === "disponivel";
+      const rotaMinha = minhasRotas.includes(String(r.id));
 
       const card = document.createElement("div");
       card.className = "card";
 
       card.innerHTML = `
-        <div class="status ${disponivel ? "disponivel" : "indisponivel"}">
-          ${disponivel ? "DISPONÍVEL" : "ROTA REPASSADA"}
+        <div class="status ${disponivel ? "disponivel" : rotaMinha ? "sua-rota" : "indisponivel"}">
+          ${disponivel ? "DISPONÍVEL" : rotaMinha ? "ESSA ROTA É SUA" : "ROTA REPASSADA"}
         </div>
 
         <h2>ROTA: ${r.route_name}</h2>
@@ -549,7 +579,9 @@ async function carregarRotas() {
         ${
           disponivel
           ? `<button onclick='abrirConfirmacao(${JSON.stringify(r)})'>Pegar rota</button>`
-          : `<button disabled>Indisponível</button>`
+          : rotaMinha
+            ? `<button disabled style="color:#dbeafe; border-color:#38bdf8;">Essa rota é sua</button>`
+            : `<button disabled>Indisponível</button>`
         }
       `;
 
@@ -591,6 +623,8 @@ async function confirmarRota() {
     fecharModal("modalConfirmar");
 
     if (data.success) {
+      salvarMinhaRota(rotaAtual.id);
+
       mostrarResultado(
         "success",
         "Rota confirmada",
@@ -865,7 +899,13 @@ async function registrarPresencaConfirmada() {
 
 function iniciarRealtime() {
   sb.channel("routes-realtime")
-    .on("postgres_changes", { event: "*", schema: "public", table: "routes" }, () => carregarRotas())
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "routes"
+    }, () => {
+      carregarRotas();
+    })
     .subscribe();
 }
 
