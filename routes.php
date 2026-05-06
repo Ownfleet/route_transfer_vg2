@@ -1,18 +1,18 @@
 <?php
-header("Content-Type: text/plain; charset=utf-8");
+header("Content-Type: application/json; charset=utf-8");
+header("Access-Control-Allow-Origin: *");
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 
 require_once "db.php";
 
-try {
-    $conn = getConnection();
-    echo "CONECTOU COM BANCO\n";
+$conn = getConnection();
 
-    $stmt = $conn->query("SELECT COUNT(*) AS total FROM routes");
-    $row = $stmt->fetch();
+$stmt = $conn->query("
+    SELECT id, route_name, region, allowed_vehicles, status,
+           claimed_at, claimed_by_driver_name, claimed_by_driver_id, created_at
+    FROM routes
+    ORDER BY created_at DESC
+");
 
-    echo "Total de rotas: " . $row["total"];
-} catch (Exception $e) {
-    http_response_code(500);
-    echo "ERRO AO CONECTAR:\n";
-    echo $e->getMessage();
-}
+echo json_encode($stmt->fetchAll());
+?>
