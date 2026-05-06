@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Rotas Disponíveis</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{margin:0;font-family:Arial;background:#030712;color:white}
+header{text-align:center;padding:28px}
+.grid{max-width:1100px;margin:auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px}
+.card{background:#111827;border:1px solid #263044;border-radius:20px;padding:22px}
+button{width:100%;padding:14px;border:0;border-radius:14px;background:#ee4d2d;color:#fff;font-weight:bold}
+button:disabled{background:#1f2937;color:#6b7280}
+.tag{display:inline-block;border:1px solid #facc15;color:#facc15;border-radius:999px;padding:8px 12px;margin:4px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);align-items:center;justify-content:center;padding:18px}
+.modal.show{display:flex}
+.box{background:#111827;border:1px solid #374151;border-radius:22px;padding:24px;max-width:430px;width:100%}
+input{width:100%;padding:14px;border-radius:12px;border:1px solid #374151;background:#020617;color:#fff;margin:12px 0}
+</style>
+</head>
+<body>
+<header><h1>Rotas Disponíveis</h1></header>
+<main id="rotas" class="grid"></main>
+
+<div id="modal" class="modal">
+  <div class="box">
+    <h2>Confirmar rota</h2>
+    <p id="info"></p>
+    <input id="driverId" placeholder="Digite seu ID">
+    <button onclick="confirmarRota()">Confirmar e pegar rota</button>
+    <button onclick="fechar()">Cancelar</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const API = "https://routetransfervg2-production.up.railway.app";
+const SUPABASE_URL = "https://yewfqmgmphswqvpuhfin.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlld2ZxbWdtcGhzd3F2cHVoZmluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNjAzNDcsImV4cCI6MjA5MzYzNjM0N30.DJcUn4nU-yDtCZatK8e8XhDwi2e4qa3oEdyPOdYi4xs";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let rotaAtual=null;
+
+async function carregarRotas(){
+  const res = await fetch(API + "/routes.php?t=" + Date.now(), {cache:"no-store"});
+  const data = await res.json();
+  rotas.innerHTML = data.length ? "" : "<p>Nenhuma rota disponível.</p>";
+  data.forEach(r=>{
+    const v = String(r.allowed_vehicles).replace("{","").replace("}","").split(",");
+    const disp = r.status === "disponivel";
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `<h2>ROTA: ${r.route_name}</h2><p>Região: ${r.region}</p>
+      <div>${v.map(x=>`<span class='tag'>${x}</span>`).join("")}</div>
+      ${disp ? `<button onclick='abrir(${JSON.stringify(r)})'>Pegar rota</button>` : `<button disabled>Indisponível</button>`}`;
+    rotas.appendChild(div);
+  });
+}
+function abrir(r){rotaAtual=r; info.innerText=`Rota: ${r.route_name}\nRegião: ${r.region}`; driverId.value=""; modal.classList.add("show")}
+function fechar(){modal.classList.remove("show")}
+async function confirmarRota(){
+  const id=driverId.value.trim(); if(!id)return;
+  const res=await fetch(API+"/claim-route.php",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({driver_id:id,route_id:rotaAtual.id})});
+  const data=await res.json();
+  fechar();
+  alert(data.success ? "ROTA CONFIRMADA: " + data.route.route_name : "Operação não autorizada.");
+  carregarRotas();
+}
+sb.channel("routes-realtime").on("postgres_changes",{event:"*",schema:"public",table:"routes"},()=>carregarRotas()).subscribe();
+carregarRotas();
+</script>
+</body>
+</html>
