@@ -409,13 +409,16 @@ Mesmo registrando sua presença pelo sistema, também é importante avisar os an
 
     <input
       id="driverId"
+      name="id_rota_manual_001"
+      type="text"
       placeholder="Digite seu ID"
       inputmode="numeric"
-      autocomplete="new-password"
+      autocomplete="off"
       autocorrect="off"
       autocapitalize="off"
       spellcheck="false"
-      readonly
+      data-lpignore="true"
+      data-form-type="other"
     >
 
     <div class="actions">
@@ -433,13 +436,16 @@ Mesmo registrando sua presença pelo sistema, também é importante avisar os an
 
     <input
       id="waitingDriverId"
+      name="id_galpao_manual_002"
+      type="text"
       placeholder="Digite seu ID"
       inputmode="numeric"
-      autocomplete="new-password"
+      autocomplete="off"
       autocorrect="off"
       autocapitalize="off"
       spellcheck="false"
-      readonly
+      data-lpignore="true"
+      data-form-type="other"
     >
 
     <div id="mapaGalpao"></div>
@@ -563,19 +569,12 @@ function salvarMinhaRota(routeId) {
 function protegerCampoId(input) {
   if (!input) return;
 
-  input.setAttribute("autocomplete", "new-password");
+  input.setAttribute("autocomplete", "off");
   input.setAttribute("autocorrect", "off");
   input.setAttribute("autocapitalize", "off");
   input.setAttribute("spellcheck", "false");
-  input.setAttribute("readonly", "true");
-
-  input.addEventListener("focus", () => {
-    setTimeout(() => input.removeAttribute("readonly"), 80);
-  });
-
-  input.addEventListener("touchstart", () => {
-    setTimeout(() => input.removeAttribute("readonly"), 80);
-  });
+  input.setAttribute("data-lpignore", "true");
+  input.setAttribute("data-form-type", "other");
 
   input.addEventListener("paste", e => {
     e.preventDefault();
