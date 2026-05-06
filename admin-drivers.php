@@ -2,9 +2,7 @@
 header("Content-Type: application/json; charset=utf-8");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
-    exit;
-}
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") exit;
 
 require_once "auth.php";
 require_admin();
@@ -57,7 +55,33 @@ if ($action === "create") {
     ");
 
     $stmt->execute([$driverId, $driverName, $vehicleType, $telephone]);
+    echo json_encode(["success" => true]);
+    exit;
+}
 
+if ($action === "update") {
+    $driverId = trim($data["driver_id"] ?? "");
+    $vehicleType = strtoupper(trim($data["vehicle_type"] ?? ""));
+    $telephone = trim($data["telephone"] ?? "");
+
+    if (!$driverId || !$vehicleType) {
+        echo json_encode(["error" => "Dados inválidos"]);
+        exit;
+    }
+
+    if (!in_array($vehicleType, $VEICULOS)) {
+        echo json_encode(["error" => "Tipo de veículo inválido"]);
+        exit;
+    }
+
+    $stmt = $conn->prepare("
+        UPDATE drivers
+        SET vehicle_type = ?,
+            telephone = ?
+        WHERE driver_id = ?
+    ");
+
+    $stmt->execute([$vehicleType, $telephone, $driverId]);
     echo json_encode(["success" => true]);
     exit;
 }
@@ -85,7 +109,6 @@ if ($action === "bulk_create") {
 
     foreach ($drivers as $index => $d) {
         $linha = $index + 2;
-
         $driverId = trim($d["driver_id"] ?? "");
         $driverName = trim($d["driver_name"] ?? "");
         $vehicleType = strtoupper(trim($d["vehicle_type"] ?? ""));
@@ -124,15 +147,26 @@ if ($action === "bulk_create") {
 if ($action === "toggle") {
     $stmt = $conn->prepare("UPDATE drivers SET active = NOT active WHERE driver_id = ?");
     $stmt->execute([$data["driver_id"]]);
-
     echo json_encode(["success" => true]);
     exit;
 }
 
 if ($action === "punish") {
-    $stmt = $conn->prepare("UPDATE drivers SET punished_until = NOW() + INTERVAL '15 hours' WHERE driver_id = ?");
-    $stmt->execute([$data["driver_id"]]);
+    $driverId = trim($data["driver_id"] ?? "");
+    $amount = max(1, intval($data["amount"] ?? 15));
+    $unit = $data["unit"] ?? "hours";
 
+    if (!in_array($unit, ["minutes", "hours", "days"])) {
+        $unit = "hours";
+    }
+
+    $stmt = $conn->prepare("
+        UPDATE drivers
+        SET punished_until = NOW() + (? || ' ' || ?)::interval
+        WHERE driver_id = ?
+    ");
+
+    $stmt->execute([$amount, $unit, $driverId]);
     echo json_encode(["success" => true]);
     exit;
 }
@@ -140,7 +174,6 @@ if ($action === "punish") {
 if ($action === "remove_punish") {
     $stmt = $conn->prepare("UPDATE drivers SET punished_until = NULL WHERE driver_id = ?");
     $stmt->execute([$data["driver_id"]]);
-
     echo json_encode(["success" => true]);
     exit;
 }
