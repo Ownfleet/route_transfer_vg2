@@ -267,6 +267,85 @@ input:focus, select:focus {
   margin-left: 6px;
 }
 
+
+.vehicle-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.vehicle-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #020617;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 13px;
+  cursor: pointer;
+  font-weight: 900;
+  color: #e5e7eb;
+}
+
+.vehicle-check input {
+  width: auto;
+  margin: 0;
+  accent-color: #ee4d2d;
+}
+
+.vehicle-check:has(input:checked) {
+  border-color: #ee4d2d;
+  background: rgba(238,77,45,.15);
+  color: white;
+}
+
+
+.loading-spinner {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 5px solid rgba(255,255,255,.14);
+  border-top-color: #ee4d2d;
+  margin: 0 auto 18px;
+  animation: spin .8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.feedback-success h2 { color: #86efac; }
+.feedback-error h2 { color: #fca5a5; }
+
+.feedback-icon {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 16px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  font-weight: 900;
+}
+
+.feedback-success .feedback-icon {
+  color: #86efac;
+  background: rgba(34,197,94,.16);
+  border: 1px solid rgba(34,197,94,.45);
+}
+
+.feedback-error .feedback-icon {
+  color: #fca5a5;
+  background: rgba(248,113,113,.14);
+  border: 1px solid rgba(248,113,113,.35);
+}
+
+.feedback-text {
+  white-space: pre-line;
+  text-align: center;
+}
+
 @media (max-width: 620px) {
   .container { padding: 16px; }
   .modal-box { padding: 22px; }
@@ -295,7 +374,7 @@ input:focus, select:focus {
 
     <div class="card">
       <h2>Resumo</h2>
-      <p>O admin cria rota preenchendo apenas <strong>rota</strong> e <strong>região</strong>. Os veículos são fixos: FIORINO, PASSEIO, MOTO e VAN.</p>
+      <p>O admin cria rota preenchendo <strong>rota</strong>, <strong>região</strong> e selecionando quais veículos podem pegar.</p>
 
       <div class="info-grid">
         <div class="info-box"><small>Rotas disponíveis</small><strong id="totalDisponiveis">0</strong></div>
@@ -323,9 +402,33 @@ input:focus, select:focus {
     <input id="routeName" placeholder="Rota. Ex: B-14+B-15/120">
     <input id="region" placeholder="Região. Ex: Guarulhos">
 
+    <p>Selecione quais veículos poderão pegar esta rota:</p>
+
+    <div class="vehicle-options">
+      <label class="vehicle-check">
+        <input type="checkbox" class="rotaVeiculo" value="FIORINO" checked>
+        FIORINO
+      </label>
+
+      <label class="vehicle-check">
+        <input type="checkbox" class="rotaVeiculo" value="PASSEIO" checked>
+        PASSEIO
+      </label>
+
+      <label class="vehicle-check">
+        <input type="checkbox" class="rotaVeiculo" value="MOTO">
+        MOTO
+      </label>
+
+      <label class="vehicle-check">
+        <input type="checkbox" class="rotaVeiculo" value="VAN">
+        VAN
+      </label>
+    </div>
+
     <div class="notice">
-      Veículos liberados: <strong>FIORINO, PASSEIO, MOTO, VAN</strong><br>
-      Status inicial: <strong>DISPONÍVEL</strong>
+      Status inicial: <strong>DISPONÍVEL</strong><br>
+      Somente motoristas com veículo selecionado poderão pegar esta rota.
     </div>
 
     <div class="modal-actions">
@@ -441,6 +544,26 @@ input:focus, select:focus {
   </div>
 </div>
 
+
+<div class="modal" id="modalLoading">
+  <div class="modal-box">
+    <div class="loading-spinner"></div>
+    <h2 id="loadingTitulo">Processando...</h2>
+    <p id="loadingTexto">Aguarde enquanto o sistema conclui a operação.</p>
+  </div>
+</div>
+
+<div class="modal" id="modalFeedback">
+  <div class="modal-box" id="feedbackBox">
+    <div class="feedback-icon" id="feedbackIcon">✓</div>
+    <h2 id="feedbackTitulo"></h2>
+    <p id="feedbackTexto" class="feedback-text"></p>
+    <div class="modal-actions">
+      <button onclick="fecharModal('modalFeedback')">Entendi</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -460,6 +583,49 @@ function abrirModal(id) {
 
 function fecharModal(id) {
   document.getElementById(id).classList.remove("show");
+}
+
+function mostrarLoading(titulo = "Processando...", texto = "Aguarde enquanto o sistema conclui a operação.") {
+  loadingTitulo.innerText = titulo;
+  loadingTexto.innerText = texto;
+  abrirModal("modalLoading");
+}
+
+function esconderLoading() {
+  fecharModal("modalLoading");
+}
+
+function mostrarFeedback(tipo, titulo, texto) {
+  feedbackBox.classList.remove("feedback-success", "feedback-error");
+
+  if (tipo === "success") {
+    feedbackBox.classList.add("feedback-success");
+    feedbackIcon.innerText = "✓";
+  } else {
+    feedbackBox.classList.add("feedback-error");
+    feedbackIcon.innerText = "!";
+  }
+
+  feedbackTitulo.innerText = titulo;
+  feedbackTexto.innerText = texto;
+  abrirModal("modalFeedback");
+}
+
+async function requisicaoJson(url, options = {}) {
+  const res = await fetch(url, options);
+  let data = null;
+
+  try {
+    data = await res.json();
+  } catch (e) {
+    data = null;
+  }
+
+  if (!res.ok || (data && data.error)) {
+    throw new Error((data && data.error) ? data.error : "Erro ao processar solicitação.");
+  }
+
+  return data;
 }
 
 function existeModalAbertoSemLogin() {
@@ -485,20 +651,29 @@ async function validarLogin() {
   const senhaDigitada = loginSenha.value.trim();
   if (!senhaDigitada) return;
 
-  const res = await fetch("login.php", {
-    method: "POST",
-    headers: headersAdmin(),
-    body: JSON.stringify({ password: senhaDigitada })
-  });
+  mostrarLoading("Validando acesso...", "Aguarde enquanto verificamos sua senha.");
 
-  if (res.status !== 200) {
-    loginSenha.value = "";
-    return;
+  try {
+    const res = await fetch("login.php", {
+      method: "POST",
+      headers: headersAdmin(),
+      body: JSON.stringify({ password: senhaDigitada })
+    });
+
+    esconderLoading();
+
+    if (res.status !== 200) {
+      loginSenha.value = "";
+      return;
+    }
+
+    document.body.classList.remove("locked");
+    fecharModal("modalLogin");
+    await iniciarMonitoramento();
+  } catch (err) {
+    esconderLoading();
+    mostrarFeedback("error", "Erro no login", "Não foi possível validar o acesso agora.");
   }
-
-  document.body.classList.remove("locked");
-  fecharModal("modalLogin");
-  await iniciarMonitoramento();
 }
 
 async function tentarLoginSalvo() {
@@ -515,6 +690,7 @@ async function tentarLoginSalvo() {
 }
 
 async function sairAdmin() {
+  mostrarLoading("Saindo...", "Aguarde enquanto encerramos a sessão.");
   await fetch("logout.php");
   location.reload();
 }
@@ -573,29 +749,55 @@ function textoStatus(status) {
   return status || "-";
 }
 
+function veiculosSelecionadosRota() {
+  return Array.from(document.querySelectorAll(".rotaVeiculo:checked"))
+    .map(input => input.value);
+}
+
 async function divulgarRota() {
   const route_name = routeName.value.trim();
   const route_region = region.value.trim();
+  const allowed_vehicles = veiculosSelecionadosRota();
 
-  if (!route_name || !route_region) return;
+  if (!route_name || !route_region) {
+    mostrarFeedback("error", "Campos obrigatórios", "Preencha a rota e a região para divulgar.");
+    return;
+  }
 
-  const res = await fetch("admin-routes.php", {
-    method: "POST",
-    headers: headersAdmin(),
-    body: JSON.stringify({
-      action: "create",
-      route_name,
-      region: route_region,
-      allowed_vehicles: ["FIORINO", "PASSEIO", "MOTO", "VAN"]
-    })
-  });
+  if (!allowed_vehicles.length) {
+    mostrarFeedback("error", "Veículo obrigatório", "Selecione pelo menos um tipo de veículo para esta rota.");
+    return;
+  }
 
-  if (res.status !== 200) return;
+  mostrarLoading("Divulgando rota...", "Aguarde enquanto a rota é salva no sistema.");
 
-  routeName.value = "";
-  region.value = "";
-  fecharModal("modalRota");
-  await atualizarBaseRotas(true);
+  try {
+    await requisicaoJson("admin-routes.php", {
+      method: "POST",
+      headers: headersAdmin(),
+      body: JSON.stringify({
+        action: "create",
+        route_name,
+        region: route_region,
+        allowed_vehicles
+      })
+    });
+
+    routeName.value = "";
+    region.value = "";
+    document.querySelectorAll(".rotaVeiculo").forEach(input => {
+      input.checked = input.value === "FIORINO" || input.value === "PASSEIO";
+    });
+
+    fecharModal("modalRota");
+    await atualizarBaseRotas(true);
+
+    esconderLoading();
+    mostrarFeedback("success", "Rota divulgada", "A rota foi cadastrada com sucesso e já está disponível para os veículos selecionados.");
+  } catch (err) {
+    esconderLoading();
+    mostrarFeedback("error", "Erro ao divulgar rota", err.message || "Não foi possível divulgar a rota.");
+  }
 }
 
 async function carregarRotasAdmin() {
@@ -634,14 +836,23 @@ function reabrirRota(id) {
     "Reabrir rota",
     "Essa ação vai deixar a rota disponível novamente e liberar o motorista para pegar outra rota.",
     async () => {
-      await fetch("admin-routes.php", {
-        method: "POST",
-        headers: headersAdmin(),
-        body: JSON.stringify({ action: "reopen", id })
-      });
+      mostrarLoading("Reabrindo rota...", "Aguarde enquanto a rota é resetada.");
+      try {
+        await requisicaoJson("admin-routes.php", {
+          method: "POST",
+          headers: headersAdmin(),
+          body: JSON.stringify({ action: "reopen", id })
+        });
 
-      await carregarRotasAdmin();
-      await atualizarBaseRotas(true);
+        await carregarRotasAdmin();
+        await atualizarBaseRotas(true);
+
+        esconderLoading();
+        mostrarFeedback("success", "Rota reaberta", "A rota foi resetada com sucesso e voltou a ficar disponível.");
+      } catch (err) {
+        esconderLoading();
+        mostrarFeedback("error", "Erro ao reabrir rota", err.message || "Não foi possível reabrir a rota.");
+      }
     }
   );
 }
@@ -651,14 +862,23 @@ function excluirRota(id) {
     "Excluir rota",
     "Essa ação vai remover a rota do sistema.",
     async () => {
-      await fetch("admin-routes.php", {
-        method: "POST",
-        headers: headersAdmin(),
-        body: JSON.stringify({ action: "delete", id })
-      });
+      mostrarLoading("Excluindo rota...", "Aguarde enquanto a rota é removida do sistema.");
+      try {
+        await requisicaoJson("admin-routes.php", {
+          method: "POST",
+          headers: headersAdmin(),
+          body: JSON.stringify({ action: "delete", id })
+        });
 
-      await carregarRotasAdmin();
-      await atualizarBaseRotas(true);
+        await carregarRotasAdmin();
+        await atualizarBaseRotas(true);
+
+        esconderLoading();
+        mostrarFeedback("success", "Rota excluída", "A rota foi removida com sucesso.");
+      } catch (err) {
+        esconderLoading();
+        mostrarFeedback("error", "Erro ao excluir rota", err.message || "Não foi possível excluir a rota.");
+      }
     }
   );
 }
@@ -672,48 +892,75 @@ async function cadastrarMotorista() {
     telephone: driverTelephone.value.trim()
   };
 
-  if (!body.driver_id || !body.driver_name || !body.vehicle_type) return;
+  if (!body.driver_id || !body.driver_name || !body.vehicle_type) {
+    mostrarFeedback("error", "Campos obrigatórios", "Preencha ID, nome e veículo do motorista.");
+    return;
+  }
 
-  const res = await fetch("admin-drivers.php", {
-    method: "POST",
-    headers: headersAdmin(),
-    body: JSON.stringify(body)
-  });
+  mostrarLoading("Cadastrando motorista...", "Aguarde enquanto o motorista é salvo no sistema.");
 
-  if (res.status !== 200) return;
+  try {
+    await requisicaoJson("admin-drivers.php", {
+      method: "POST",
+      headers: headersAdmin(),
+      body: JSON.stringify(body)
+    });
 
-  driverId.value = "";
-  driverName.value = "";
-  driverTelephone.value = "";
-  vehicleType.value = "FIORINO";
-  fecharModal("modalMotorista");
+    driverId.value = "";
+    driverName.value = "";
+    driverTelephone.value = "";
+    vehicleType.value = "FIORINO";
+    fecharModal("modalMotorista");
+
+    esconderLoading();
+    mostrarFeedback("success", "Motorista cadastrado", "Motorista cadastrado/atualizado com sucesso.");
+  } catch (err) {
+    esconderLoading();
+    mostrarFeedback("error", "Erro ao cadastrar motorista", err.message || "Não foi possível cadastrar o motorista.");
+  }
 }
 
 async function consultarMotorista() {
   const id = consultaDriverId.value.trim();
-  if (!id) return;
 
-  const res = await fetch("admin-drivers.php?driver_id=" + encodeURIComponent(id) + "&t=" + Date.now(), { cache: "no-store" });
-  if (res.status !== 200) return;
-
-  const d = await res.json();
-
-  if (!d) {
-    resultadoMotorista.style.display = "none";
+  if (!id) {
+    mostrarFeedback("error", "ID obrigatório", "Informe o ID do motorista para consultar.");
     return;
   }
 
-  motoristaAtual = d;
+  mostrarLoading("Consultando motorista...", "Aguarde enquanto buscamos as informações.");
 
-  mId.innerText = d.driver_id;
-  mNome.innerText = d.driver_name;
-  mVeiculo.innerText = d.vehicle_type;
-  mTelefone.innerHTML = linkWhatsApp(d.telephone);
-  mStatus.innerHTML = d.active ? "ATIVO" : "DESATIVADO";
-  mStatus.className = d.active ? "on badge" : "off badge";
-  mPunicao.innerText = d.punished_until ? formatarData(d.punished_until) : "-";
+  try {
+    const res = await fetch("admin-drivers.php?driver_id=" + encodeURIComponent(id) + "&t=" + Date.now(), { cache: "no-store" });
 
-  resultadoMotorista.style.display = "block";
+    if (res.status !== 200) {
+      throw new Error("Erro ao consultar motorista.");
+    }
+
+    const d = await res.json();
+    esconderLoading();
+
+    if (!d) {
+      resultadoMotorista.style.display = "none";
+      mostrarFeedback("error", "Motorista não encontrado", "Nenhum motorista foi encontrado com esse ID.");
+      return;
+    }
+
+    motoristaAtual = d;
+
+    mId.innerText = d.driver_id;
+    mNome.innerText = d.driver_name;
+    mVeiculo.innerText = d.vehicle_type;
+    mTelefone.innerHTML = linkWhatsApp(d.telephone);
+    mStatus.innerHTML = d.active ? "ATIVO" : "DESATIVADO";
+    mStatus.className = d.active ? "on badge" : "off badge";
+    mPunicao.innerText = d.punished_until ? formatarData(d.punished_until) : "-";
+
+    resultadoMotorista.style.display = "block";
+  } catch (err) {
+    esconderLoading();
+    mostrarFeedback("error", "Erro na consulta", err.message || "Não foi possível consultar o motorista.");
+  }
 }
 
 function acaoMotoristaModal(action) {
@@ -726,16 +973,26 @@ function acaoMotoristaModal(action) {
   };
 
   confirmarAcao("Confirmar tratativa", texto[action], async () => {
-    await fetch("admin-drivers.php", {
-      method: "POST",
-      headers: headersAdmin(),
-      body: JSON.stringify({
-        action,
-        driver_id: motoristaAtual.driver_id
-      })
-    });
+    mostrarLoading("Aplicando tratativa...", "Aguarde enquanto atualizamos o cadastro do motorista.");
 
-    await consultarMotorista();
+    try {
+      await requisicaoJson("admin-drivers.php", {
+        method: "POST",
+        headers: headersAdmin(),
+        body: JSON.stringify({
+          action,
+          driver_id: motoristaAtual.driver_id
+        })
+      });
+
+      esconderLoading();
+      mostrarFeedback("success", "Tratativa aplicada", "A ação foi aplicada com sucesso.");
+
+      await consultarMotorista();
+    } catch (err) {
+      esconderLoading();
+      mostrarFeedback("error", "Erro na tratativa", err.message || "Não foi possível aplicar a ação.");
+    }
   });
 }
 
@@ -809,7 +1066,12 @@ async function importarMotoristasArquivo() {
   resultadoImportacao.classList.add("hidden");
   resultadoImportacao.innerText = "";
 
-  if (!file) return;
+  if (!file) {
+    mostrarFeedback("error", "Arquivo obrigatório", "Selecione um arquivo CSV, XLSX ou XLS para importar.");
+    return;
+  }
+
+  mostrarLoading("Importando motoristas...", "Aguarde enquanto o arquivo é lido e enviado ao sistema.");
 
   try {
     const drivers = await lerArquivoMotoristas(file);
@@ -820,13 +1082,26 @@ async function importarMotoristasArquivo() {
       ["FIORINO", "PASSEIO", "MOTO", "VAN"].includes(d.vehicle_type)
     );
 
+    const invalidos = drivers
+      .map((d, i) => ({ ...d, linha: i + 2 }))
+      .filter(d =>
+        !d.driver_id ||
+        !d.driver_name ||
+        !["FIORINO", "PASSEIO", "MOTO", "VAN"].includes(d.vehicle_type)
+      );
+
     if (!validos.length) {
-      resultadoImportacao.innerText = "Nenhum motorista válido encontrado.";
-      resultadoImportacao.classList.remove("hidden");
+      esconderLoading();
+
+      const detalhes = invalidos.length
+        ? invalidos.map(d => `Linha ${d.linha}: ID, nome ou veículo inválido`).join("\\n")
+        : "Nenhum motorista válido encontrado.";
+
+      mostrarFeedback("error", "Importação não realizada", detalhes);
       return;
     }
 
-    const res = await fetch("admin-drivers.php", {
+    const data = await requisicaoJson("admin-drivers.php", {
       method: "POST",
       headers: headersAdmin(),
       body: JSON.stringify({
@@ -835,19 +1110,39 @@ async function importarMotoristasArquivo() {
       })
     });
 
-    if (res.status !== 200) return;
-
-    const data = await res.json();
-
-    resultadoImportacao.innerText =
-      `Importação finalizada.\nImportados/atualizados: ${data.importados ?? 0}\nIgnorados: ${data.ignorados ?? 0}`;
-
-    resultadoImportacao.classList.remove("hidden");
     arquivoMotoristas.value = "";
 
+    const errosServidor = Array.isArray(data.erros) && data.erros.length
+      ? "\\n\\nOcorrências:\\n" + data.erros.join("\\n")
+      : "";
+
+    const errosArquivo = invalidos.length
+      ? "\\n\\nLinhas inválidas no arquivo:\\n" + invalidos.map(d => `Linha ${d.linha}: ID, nome ou veículo inválido`).join("\\n")
+      : "";
+
+    const resumo =
+      `Importação finalizada.\\n` +
+      `Importados/atualizados: ${data.importados ?? 0}\\n` +
+      `Ignorados pelo sistema: ${data.ignorados ?? 0}` +
+      errosServidor +
+      errosArquivo;
+
+    resultadoImportacao.innerText = resumo;
+    resultadoImportacao.classList.remove("hidden");
+
+    esconderLoading();
+
+    if ((data.ignorados ?? 0) > 0 || invalidos.length > 0) {
+      mostrarFeedback("error", "Importação concluída com alertas", resumo);
+    } else {
+      mostrarFeedback("success", "Importação concluída", resumo);
+    }
+
   } catch (err) {
+    esconderLoading();
     resultadoImportacao.innerText = err.message || "Erro ao importar.";
     resultadoImportacao.classList.remove("hidden");
+    mostrarFeedback("error", "Erro na importação", err.message || "Não foi possível importar os motoristas.");
   }
 }
 
