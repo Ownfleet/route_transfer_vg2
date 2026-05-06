@@ -452,7 +452,7 @@ Mesmo registrando sua presença pelo sistema, também é importante avisar os an
 const API = "https://routetransfervg2-production.up.railway.app";
 
 const SUPABASE_URL = "https://yewfqmgmphswqvpuhfin.supabase.co";
-const SUPABASE_ANON_KEY = "SUA_ANON_KEY_AQUI";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlld2ZxbWdtcGhzd3F2cHVoZmluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNjAzNDcsImV4cCI6MjA5MzYzNjM0N30.DJcUn4nU-yDtCZatK8e8XhDwi2e4qa3oEdyPOdYi4xs";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let rotaAtual = null;
@@ -622,25 +622,67 @@ async function abrirAguardarGalpao() {
   analiseLocalizacao.innerHTML = "Carregando configuração do galpão...";
   abrirModal("modalAguardarGalpao");
 
-  await carregarConfigGalpao();
-  setTimeout(inicializarMapa, 250);
+  const config = await carregarConfigGalpao();
+
+  if (config) {
+    setTimeout(inicializarMapa, 350);
+  }
 }
 
 async function carregarConfigGalpao() {
+  ultimaConfigGalpao = null;
+
   try {
-    const res = await fetch(API + "/hub-public-config.php?t=" + Date.now(), { cache: "no-store" });
-    const cfg = await res.json();
+    let cfg = null;
+
+    try {
+      const res = await fetch(API + "/hub-public-config.php?t=" + Date.now(), {
+        cache: "no-store"
+      });
+
+      if (res.ok) {
+        cfg = await res.json();
+      }
+    } catch (e) {
+      console.warn("Falha ao buscar pelo Railway, tentando Supabase direto...");
+    }
+
+    if (!cfg || !cfg.latitude || !cfg.longitude || !cfg.radius_meters) {
+      const { data, error } = await sb
+        .from("hub_config")
+        .select("hub_name, latitude, longitude, radius_meters, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error("Erro Supabase hub_config:", error);
+        throw error;
+      }
+
+      if (data && data.length > 0) {
+        cfg = data[0];
+      }
+    }
 
     if (!cfg) {
       analiseLocalizacao.innerHTML = `<span class="map-bad">Galpão ainda não configurado pelo admin.</span>`;
       return null;
     }
 
+    const latitude = Number(cfg.latitude);
+    const longitude = Number(cfg.longitude);
+    const radius = Number(cfg.radius_meters);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(radius) || radius <= 0) {
+      analiseLocalizacao.innerHTML = `<span class="map-bad">Configuração do galpão inválida. Verifique latitude, longitude e raio no painel admin.</span>`;
+      return null;
+    }
+
     ultimaConfigGalpao = {
       hub_name: cfg.hub_name || "Galpão",
-      latitude: Number(cfg.latitude),
-      longitude: Number(cfg.longitude),
-      radius_meters: Number(cfg.radius_meters)
+      latitude,
+      longitude,
+      radius_meters: radius
     };
 
     analiseLocalizacao.innerHTML =
@@ -651,6 +693,7 @@ async function carregarConfigGalpao() {
     return ultimaConfigGalpao;
 
   } catch (err) {
+    console.error("Erro ao carregar configuração do galpão:", err);
     analiseLocalizacao.innerHTML = `<span class="map-bad">Erro ao carregar configuração do galpão.</span>`;
     return null;
   }
@@ -688,6 +731,7 @@ function distanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
+
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * Math.PI / 180) *
@@ -697,12 +741,18 @@ function distanciaMetros(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-function analisarLocalizacao() {
+async function analisarLocalizacao() {
   const id = waitingDriverId.value.trim();
 
   if (!id) {
     mostrarResultado("error", "ID obrigatório", "Informe seu ID antes de analisar a localização.");
     return;
+  }
+
+  if (!ultimaConfigGalpao) {
+    analiseLocalizacao.innerHTML = "Carregando configuração do galpão...";
+    await carregarConfigGalpao();
+    inicializarMapa();
   }
 
   if (!ultimaConfigGalpao) {
