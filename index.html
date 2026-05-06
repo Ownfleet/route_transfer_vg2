@@ -455,10 +455,14 @@ async function confirmarRota() {
          <br>Boa viagem 🚚`
       );
     } else {
+      const mensagem = data.reason === "route_already_taken"
+        ? "Infelizmente alguém preencheu primeiro. Tente outra rota disponível."
+        : "Operação não autorizada.";
+
       mostrarResultado(
         "error",
         "Não foi possível pegar a rota",
-        "Operação não autorizada."
+        mensagem
       );
     }
 
