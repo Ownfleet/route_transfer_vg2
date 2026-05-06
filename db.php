@@ -2,19 +2,24 @@
 function getConnection() {
     $databaseUrl = getenv("DATABASE_URL");
 
-    if ($databaseUrl) {
-        $parts = parse_url($databaseUrl);
-        $host = $parts["host"] ?? "";
-        $port = $parts["port"] ?? 5432;
-        $user = $parts["user"] ?? "";
-        $pass = $parts["pass"] ?? "";
-        $db = ltrim($parts["path"] ?? "", "/");
-    } else {
-        $host = getenv("PGHOST") ?: "COLOQUE_HOST_DO_SUPABASE";
-        $port = getenv("PGPORT") ?: "5432";
-        $db = getenv("PGDATABASE") ?: "postgres";
-        $user = getenv("PGUSER") ?: "COLOQUE_USER_DO_SUPABASE";
-        $pass = getenv("PGPASSWORD") ?: "COLOQUE_SENHA_DO_BANCO";
+    if (!$databaseUrl) {
+        throw new Exception("DATABASE_URL não encontrada no Railway.");
+    }
+
+    $parts = parse_url($databaseUrl);
+
+    if (!$parts) {
+        throw new Exception("DATABASE_URL inválida.");
+    }
+
+    $host = $parts["host"] ?? "";
+    $port = $parts["port"] ?? 5432;
+    $user = rawurldecode($parts["user"] ?? "");
+    $pass = rawurldecode($parts["pass"] ?? "");
+    $db   = ltrim($parts["path"] ?? "", "/");
+
+    if (!$host || !$user || !$pass || !$db) {
+        throw new Exception("DATABASE_URL incompleta.");
     }
 
     $dsn = "pgsql:host={$host};port={$port};dbname={$db};sslmode=require";
