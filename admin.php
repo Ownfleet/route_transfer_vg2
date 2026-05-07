@@ -323,6 +323,28 @@ input:focus, select:focus {
   flex-wrap: wrap;
 }
 
+
+.route-select-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.route-select-box input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--orange);
+  flex: 0 0 auto;
+}
+
+.route-bulk-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0 18px;
+}
+
 .route-search { max-width: 360px; }
 
 .inline-route-list {
@@ -474,6 +496,10 @@ input:focus, select:focus {
         <div class="routes-panel-actions">
           <input class="route-search" id="filtroRotas" placeholder="Buscar rota, região, motorista ou ID" oninput="renderizarRotasPublicadas()">
           <button class="btn-dark" onclick="carregarRotasAdminInline(true)">Atualizar</button>
+          <button class="btn-info" onclick="selecionarTodasRotasVisiveis()">Selecionar visíveis</button>
+          <button class="btn-dark" onclick="desmarcarTodasRotas()">Desmarcar</button>
+          <button class="btn-danger" onclick="limparRotasSelecionadas()">Limpar selecionadas</button>
+          <button class="btn-danger" onclick="limparTodasRotas()">Limpar todas</button>
         </div>
       </div>
 
@@ -710,7 +736,7 @@ input:focus, select:focus {
 
 <script>
 const SUPABASE_URL = "https://yewfqmgmphswqvpuhfin.supabase.co";
-const SUPABASE_ANON_KEY = "SUA_ANON_KEY_AQUI";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlld2ZxbWdtcGhzd3F2cHVoZmluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNjAzNDcsImV4cCI6MjA5MzYzNjM0N30.DJcUn4nU-yDtCZatK8e8XhDwi2e4qa3oEdyPOdYi4xs";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let motoristaAtual = null;
@@ -889,17 +915,33 @@ function renderizarRotasPublicadas() {
   let rotas = rotasAtuais;
 
   if (termo) {
-    rotas = rotas.filter(r => [r.route_name, r.region, r.claimed_by_driver_name, r.claimed_by_driver_id, r.claimed_vehicle_type, r.claimed_telephone, formatarVeiculos(r.allowed_vehicles), r.status].join(" ").toLowerCase().includes(termo));
+    rotas = rotas.filter(r =>
+      [
+        r.route_name,
+        r.region,
+        r.claimed_by_driver_name,
+        r.claimed_by_driver_id,
+        r.claimed_vehicle_type,
+        r.claimed_telephone,
+        formatarVeiculos(r.allowed_vehicles),
+        r.status
+      ].join(" ").toLowerCase().includes(termo)
+    );
   }
 
   listaRotasInline.innerHTML = rotas.length ? rotas.map(r => `
     <div class="inline-route-item">
-      <div>
-        <h3>${r.route_name}</h3>
-        <p>${r.region || "-"}</p>
-        <p><strong>Permitidos:</strong> ${formatarVeiculos(r.allowed_vehicles)}</p>
+      <div class="route-select-box">
+        <input type="checkbox" class="rotaCheck" value="${r.id}" aria-label="Selecionar rota ${r.route_name}">
+        <div>
+          <h3>${r.route_name}</h3>
+          <p>${r.region || "-"}</p>
+          <p><strong>Permitidos:</strong> ${formatarVeiculos(r.allowed_vehicles)}</p>
+        </div>
       </div>
+
       <div><span class="badge ${badgeRota(r.status)}">${textoStatus(r.status)}</span></div>
+
       <div>
         <p><strong>Motorista:</strong> ${r.claimed_by_driver_name || "-"}</p>
         <p><strong>ID:</strong> ${r.claimed_by_driver_id || "-"}</p>
@@ -907,6 +949,7 @@ function renderizarRotasPublicadas() {
         <p><strong>Telefone:</strong> ${linkWhatsApp(r.claimed_telephone)}</p>
         <p><strong>Horário:</strong> ${formatarData(r.claimed_at)}</p>
       </div>
+
       <div class="inline-actions">
         <button class="btn-ok" onclick="reabrirRota(${r.id})">Abrir disponível</button>
         <button class="btn-danger" onclick="excluirRota(${r.id})">Excluir</button>
@@ -961,6 +1004,94 @@ function excluirRota(id) {
       mostrarFeedback("error", "Erro ao excluir rota", err.message || "Não foi possível excluir a rota.");
     }
   });
+}
+
+function idsRotasSelecionadas() {
+  return Array.from(document.querySelectorAll(".rotaCheck:checked"))
+    .map(input => Number(input.value))
+    .filter(Boolean);
+}
+
+function selecionarTodasRotasVisiveis() {
+  const checks = document.querySelectorAll(".rotaCheck");
+
+  if (!checks.length) {
+    mostrarFeedback("error", "Nenhuma rota visível", "Não há rotas visíveis para selecionar.");
+    return;
+  }
+
+  checks.forEach(input => {
+    input.checked = true;
+  });
+}
+
+function desmarcarTodasRotas() {
+  document.querySelectorAll(".rotaCheck").forEach(input => {
+    input.checked = false;
+  });
+}
+
+async function excluirRotasEmLote(ids) {
+  for (const id of ids) {
+    await requisicaoJson("admin-routes.php", {
+      method: "POST",
+      headers: headersAdmin(),
+      body: JSON.stringify({ action: "delete", id })
+    });
+  }
+}
+
+function limparRotasSelecionadas() {
+  const ids = idsRotasSelecionadas();
+
+  if (!ids.length) {
+    mostrarFeedback("error", "Nenhuma rota selecionada", "Selecione pelo menos uma rota para limpar.");
+    return;
+  }
+
+  confirmarAcao(
+    "Limpar rotas selecionadas",
+    `Deseja excluir ${ids.length} rota(s) selecionada(s)? Essa ação remove as rotas do sistema.`,
+    async () => {
+      mostrarLoading("Limpando rotas...", "Aguarde enquanto removemos as rotas selecionadas.");
+
+      try {
+        await excluirRotasEmLote(ids);
+        await carregarRotasAdminInline();
+        esconderLoading();
+        mostrarFeedback("success", "Rotas removidas", "As rotas selecionadas foram removidas com sucesso.");
+      } catch (err) {
+        esconderLoading();
+        mostrarFeedback("error", "Erro ao limpar rotas", err.message || "Não foi possível limpar as rotas selecionadas.");
+      }
+    }
+  );
+}
+
+function limparTodasRotas() {
+  if (!rotasAtuais.length) {
+    mostrarFeedback("error", "Nenhuma rota", "Não há rotas publicadas para limpar.");
+    return;
+  }
+
+  confirmarAcao(
+    "Limpar todas as rotas",
+    `Deseja excluir todas as ${rotasAtuais.length} rotas publicadas? Essa ação remove todas as rotas do sistema.`,
+    async () => {
+      mostrarLoading("Limpando todas as rotas...", "Aguarde enquanto removemos todas as rotas.");
+
+      try {
+        const ids = rotasAtuais.map(r => Number(r.id)).filter(Boolean);
+        await excluirRotasEmLote(ids);
+        await carregarRotasAdminInline();
+        esconderLoading();
+        mostrarFeedback("success", "Todas as rotas foram removidas", "A lista de rotas publicadas foi limpa com sucesso.");
+      } catch (err) {
+        esconderLoading();
+        mostrarFeedback("error", "Erro ao limpar todas", err.message || "Não foi possível limpar todas as rotas.");
+      }
+    }
+  );
 }
 
 async function cadastrarMotorista() {
