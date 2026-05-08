@@ -478,6 +478,7 @@ input:focus, select:focus {
   <div class="container">
     <div class="actions">
       <button onclick="abrirModal('modalRota')">+ Divulgar rota</button>
+      <button class="btn-info" onclick="abrirModal('modalRotasMassa')">+ Divulgar em massa</button>
       <button onclick="abrirModal('modalMotorista')">+ Novo motorista</button>
       <button onclick="abrirModal('modalConsultaMotorista')">Consultar motorista</button>
       <button class="btn-info" onclick="focarGerenciarRotas()">Gerenciar rotas</button>
@@ -551,6 +552,41 @@ input:focus, select:focus {
     </div>
   </div>
 </div>
+
+
+<div class="modal" id="modalRotasMassa">
+  <div class="modal-box large">
+    <button class="modal-close" onclick="fecharModal('modalRotasMassa')">×</button>
+    <h2>Divulgação em massa</h2>
+    <p>
+      Envie um arquivo CSV/XLSX contendo várias rotas de uma vez.<br><br>
+      Colunas obrigatórias:<br>
+      <strong>route_name, region, allowed_vehicles</strong><br><br>
+      Exemplo de veículos:<br>
+      <strong>FIORINO,MOTO</strong><br>
+      <strong>PASSEIO</strong><br>
+      <strong>FIORINO,PASSEIO,VAN</strong>
+    </p>
+
+    <div class="notice">
+      O sistema criará automaticamente todas as rotas como <strong>DISPONÍVEL</strong>.
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-info" onclick="baixarModeloRotasMassa()">Baixar modelo</button>
+    </div>
+
+    <input type="file" id="arquivoRotasMassa" accept=".csv,.xlsx,.xls">
+
+    <div class="modal-actions">
+      <button onclick="importarRotasMassa()">Importar rotas</button>
+      <button class="btn-dark" onclick="fecharModal('modalRotasMassa')">Cancelar</button>
+    </div>
+
+    <div id="resultadoRotasMassa" class="result-box hidden"></div>
+  </div>
+</div>
+
 
 <div class="modal" id="modalMotorista">
   <div class="modal-box">
@@ -1488,6 +1524,140 @@ async function iniciarMonitoramento() {
   await carregarAguardandoGalpao();
   iniciarRealtimeAdmin();
 }
+
+
+function baixarModeloRotasMassa() {
+  const dados = [
+    ["route_name", "region", "allowed_vehicles"],
+    ["B-14+B-15/120", "Guarulhos", "FIORINO,PASSEIO"],
+    ["A-10+A-11/95", "São Paulo", "MOTO"],
+    ["C-20+C-21/150", "Osasco", "FIORINO,VAN"]
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(dados);
+  const wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, "Rotas");
+  XLSX.writeFile(wb, "modelo_rotas_massa.xlsx");
+}
+
+async function lerArquivoRotasMassa(file) {
+  const nome = file.name.toLowerCase();
+
+  if (nome.endsWith(".xlsx") || nome.endsWith(".xls")) {
+    const buffer = await file.arrayBuffer();
+
+    const wb = XLSX.read(buffer, { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+
+    return XLSX.utils.sheet_to_json(ws, { defval: "" });
+  }
+
+  if (nome.endsWith(".csv")) {
+    const texto = await file.text();
+
+    const linhas = texto.split(/\\r?\\n/).filter(Boolean).map(l => l.split(","));
+
+    const header = linhas[0].map(h => h.trim());
+
+    return linhas.slice(1).map(linha => {
+      const obj = {};
+
+      header.forEach((h, i) => {
+        obj[h] = linha[i] || "";
+      });
+
+      return obj;
+    });
+  }
+
+  throw new Error("Formato inválido.");
+}
+
+async function importarRotasMassa() {
+  const file = document.getElementById("arquivoRotasMassa").files[0];
+
+  if (!file) {
+    mostrarFeedback("error", "Arquivo obrigatório", "Selecione um arquivo CSV/XLSX.");
+    return;
+  }
+
+  mostrarLoading("Importando rotas...", "Aguarde enquanto as rotas são processadas.");
+
+  try {
+    const linhas = await lerArquivoRotasMassa(file);
+
+    let importadas = 0;
+    let erros = [];
+
+    for (let i = 0; i < linhas.length; i++) {
+      const row = linhas[i];
+
+      const route_name = String(row.route_name || "").trim();
+      const region = String(row.region || "").trim();
+
+      let allowed_vehicles = String(row.allowed_vehicles || "")
+        .split(",")
+        .map(v => v.trim().toUpperCase())
+        .filter(Boolean);
+
+      allowed_vehicles = [...new Set(allowed_vehicles)];
+
+      if (!route_name || !region || !allowed_vehicles.length) {
+        erros.push(`Linha ${i + 2}: dados inválidos.`);
+        continue;
+      }
+
+      try {
+        await requisicaoJson("admin-routes.php", {
+          method: "POST",
+          headers: headersAdmin(),
+          body: JSON.stringify({
+            action: "create",
+            route_name,
+            region,
+            allowed_vehicles
+          })
+        });
+
+        importadas++;
+
+      } catch (e) {
+        erros.push(`Linha ${i + 2}: ${e.message}`);
+      }
+    }
+
+    esconderLoading();
+
+    const resumo =
+      `Rotas importadas: ${importadas}` +
+      (erros.length ? `\\n\\nOcorrências:\\n${erros.join("\\n")}` : "");
+
+    const box = document.getElementById("resultadoRotasMassa");
+
+    box.innerText = resumo;
+    box.classList.remove("hidden");
+
+    await carregarRotasAdminInline();
+
+    mostrarFeedback(
+      erros.length ? "error" : "success",
+      erros.length ? "Importação concluída com alertas" : "Importação concluída",
+      resumo
+    );
+
+  } catch (err) {
+    esconderLoading();
+
+    mostrarFeedback(
+      "error",
+      "Erro ao importar",
+      err.message || "Não foi possível importar as rotas."
+    );
+  }
+}
+
+
 
 loginSenha.addEventListener("keydown", e => { if (e.key === "Enter") validarLogin(); });
 consultaDriverId.addEventListener("keydown", e => { if (e.key === "Enter") consultarMotorista(); });
